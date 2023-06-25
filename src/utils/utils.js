@@ -1,5 +1,7 @@
 const fs = require('fs');
 
+const COMMON_TOKENS = require('./common-tokens.json');
+
 function toEtherscanAddress(address) {
   return `https://etherscan.io/address/${address}`;
 }
@@ -10,6 +12,10 @@ function toEtherscanTx(tx) {
 
 function toDexscreenerEth(pair) {
   return `https://dexscreener.com/ethereum/${pair}`;
+}
+
+function isCommonToken(address) {
+  return COMMON_TOKENS[address];
 }
 
 async function writeToFile(filename, object) {
@@ -25,6 +31,7 @@ function replacer(key, value) {
 }
 
 module.exports = {
+  isCommonToken,
   toDexscreenerEth,
   toEtherscanAddress,
   toEtherscanTx,

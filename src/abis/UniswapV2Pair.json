@@ -1,5 +1,11 @@
 [
   {
+    "inputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -194,7 +200,7 @@
       }
     ],
     "payable": false,
-    "stateMutability": "pure",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -209,7 +215,7 @@
       }
     ],
     "payable": false,
-    "stateMutability": "pure",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -217,12 +223,12 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "owner",
+        "name": "",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "spender",
+        "name": "",
         "type": "address"
       }
     ],
@@ -269,7 +275,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "owner",
+        "name": "",
         "type": "address"
       }
     ],
@@ -323,7 +329,7 @@
       }
     ],
     "payable": false,
-    "stateMutability": "pure",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -348,17 +354,17 @@
     "outputs": [
       {
         "internalType": "uint112",
-        "name": "reserve0",
+        "name": "_reserve0",
         "type": "uint112"
       },
       {
         "internalType": "uint112",
-        "name": "reserve1",
+        "name": "_reserve1",
         "type": "uint112"
       },
       {
         "internalType": "uint32",
-        "name": "blockTimestampLast",
+        "name": "_blockTimestampLast",
         "type": "uint32"
       }
     ],
@@ -371,12 +377,12 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "_token0",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "",
+        "name": "_token1",
         "type": "address"
       }
     ],
@@ -434,7 +440,7 @@
       }
     ],
     "payable": false,
-    "stateMutability": "pure",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -442,7 +448,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "owner",
+        "name": "",
         "type": "address"
       }
     ],
@@ -590,7 +596,7 @@
       }
     ],
     "payable": false,
-    "stateMutability": "pure",
+    "stateMutability": "view",
     "type": "function"
   },
   {
