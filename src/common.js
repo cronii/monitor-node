@@ -128,6 +128,7 @@ async function uniswapV2PairCreated(client, eventGroup) {
   await reportUniswapV2PairCreated({
     symbol0: invertPair ? token1.symbol : token0.symbol,
     symbol1: invertPair ? token0.symbol : token1.symbol,
+    address: invertPair ? tokenAddress1 : tokenAddress0,
     pair,
     value,
     supplied,

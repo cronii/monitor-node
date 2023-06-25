@@ -9,6 +9,7 @@ init config.json with rpc information
 ## TODO
 
 - ctrl-F for @TODO and @PITFALL
+- blacklist bad deployers
 - batching + unsychronous code that isnt reliant
 - token sniffing
 - csv reports for later analysis
