@@ -44,7 +44,7 @@ async function analyzeBlock({ client, blockNumber, outputToFile }) {
     if (hasWatchedEvent(events)) await analyzeEvents(client, events);
   } catch (err) {
     console.log(`Event Listener Error: ${blockNumber.toString()}`);
-    await reportError({ blockNumber })
+    await reportError({ blockNumber: blockNumber.toString() })
   }
 
   console.timeEnd(blockNumber.toString());

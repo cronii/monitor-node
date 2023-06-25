@@ -9,6 +9,7 @@ init config.json with rpc information
 ## TODO
 
 - ctrl-F for @TODO and @PITFALL
+- batching + unsychronous code that isnt reliant
 - UniswapV3 support
 - allow command line args for single and range scripts
 - Dynamic Watched Address Filter
