@@ -8,6 +8,10 @@ function toEtherscanTx(tx) {
   return `https://etherscan.io/tx/${tx}`;
 }
 
+function toDexscreenerEth(pair) {
+  return `https://dexscreener.com/ethereum/${pair}`;
+}
+
 async function writeToFile(filename, object) {
   await fs.promises.writeFile(filename, JSON.stringify(object, replacer, 2));
 }
@@ -21,6 +25,7 @@ function replacer(key, value) {
 }
 
 module.exports = {
+  toDexscreenerEth,
   toEtherscanAddress,
   toEtherscanTx,
   writeToFile

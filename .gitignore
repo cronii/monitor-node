@@ -1,5 +1,6 @@
 config.json
 output/
+reports/
 
 # Logs
 logs
