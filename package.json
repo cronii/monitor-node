@@ -1,0 +1,24 @@
+{
+  "name": "monitor-node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./index.js",
+    "single": "node scripts/single-block.js",
+    "range": "node scripts/block-range.js"
+  },
+  "author": "",
+  "dependencies": {
+    "sqlite": "^4.2.1",
+    "sqlite3": "^5.1.6",
+    "viem": "^1.1.6"
+  },
+  "devDependencies": {
+    "eslint": "^8.42.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-n": "^16.0.0",
+    "eslint-plugin-promise": "^6.1.1"
+  }
+}
