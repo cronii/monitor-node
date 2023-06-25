@@ -1,6 +1,6 @@
 const { decodeEventLog, formatUnits, trim } = require('viem');
-const { isCommonToken, toEtherscanTx, writeToFile } = require('./utils/utils');
-const { reportUniswapV2PairCreated } = require('./reporter');
+const { isCommonToken, writeToFile } = require('./utils/utils');
+const { reportError, reportTrackedWalletActivity, reportUniswapV2PairCreated } = require('./reporter');
 
 const COMMON_ADDRESSES = require('./utils/common-addresses.json');
 
@@ -30,7 +30,7 @@ async function analyzeBlock({ client, blockNumber, outputToFile }) {
   if (outputToFile) await writeToFile(`${OUTPUT_TXS}-${blockNumber.toString()}.json`, transactions);
 
   for (const transaction of transactions) {
-    isTxContractDeployment(transaction)
+    // isTxContractDeployment(transaction);
     isTxFromTrackedAddress(transaction);
   }
 
@@ -39,29 +39,32 @@ async function analyzeBlock({ client, blockNumber, outputToFile }) {
 
   if (outputToFile) await writeToFile(`${OUTPUT_EVENTS}-${blockNumber.toString()}.json`, events);
 
-  // if a watched event is emitted, do through event analysis, otherwise skip
-  if (hasWatchedEvent(events)) {
-    await analyzeEvents(client, events);
-  } else {
-    console.log('no events found');
+  // if a watched event is emitted, do thorough event analysis, otherwise skip
+  try {
+    if (hasWatchedEvent(events)) await analyzeEvents(client, events);
+  } catch (err) {
+    console.log(`Event Listener Error: ${blockNumber.toString()}`);
+    await reportError({ blockNumber })
   }
 
   console.timeEnd(blockNumber.toString());
 }
 
-function isTxContractDeployment(transaction) {
-  if (transaction.create || !transaction.to) {
-    console.log(toEtherscanTx(transaction.hash));
-  }
-}
+// function isTxContractDeployment(transaction) {
+//   if (transaction.create || !transaction.to) {
+//     console.log(toEtherscanTx(transaction.hash));
+//   }
+// }
 
 function isTxFromTrackedAddress(transaction) {
+  const { from, hash } = transaction;
   // @TODO make dynamic
   const trackedAddresss = ['0x7431931094e8bae1ecaa7d0b57d2284e121f760e'];
 
   // tracked wallet moved
-  if (trackedAddresss.includes(transaction.from)) {
-    console.log(`${transaction.from}: ${toEtherscanTx(transaction.hash)}`);
+  if (trackedAddresss.includes(from)) {
+    // console.log(`${transaction.from}: ${toEtherscanTx(transaction.hash)}`);
+    reportTrackedWalletActivity(from, hash)
   }
 }
 

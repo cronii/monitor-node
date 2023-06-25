@@ -17,8 +17,8 @@ client.watchBlockNumber({
 async function parseBlockNumber(blockNumber) {
   // @PITFALL - block is unfinalized at this point, uncertain if a delay is needed for accurate results
 
-  console.log(`parseBlockNumber: ${blockNumber}`);
-  console.log(`https://etherscan.io/block/${blockNumber}`);
+  // console.log(`parseBlockNumber: ${blockNumber}`);
+  // console.log(`https://etherscan.io/block/${blockNumber}`);
 
   await analyzeBlock({ client, blockNumber, outputToFile: false });
 };
