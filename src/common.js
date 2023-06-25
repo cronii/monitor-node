@@ -1,32 +1,48 @@
-const fs = require('fs');
-
-const OUTPUT_TX = './output/block-tx';
-const OUTPUT_LOGS = './output/block-logs';
+const { decodeAbiParameters } = require('viem');
+const { toEtherscanTx, writeToFile } = require('./utils/utils');
 
 const COMMON_ADDRESSES = require('./utils/common-addresses.json');
 
+// @TODO: this needs to be abstracted/refactored away
+const UniswapV2FactoryABI = require('./abis/UniswapV2Factory.json');
+
+const OUTPUT_TXS = './output/block-tx';
+const OUTPUT_EVENTS = './output/block-events';
+
 function isTxContractDeployment(transaction) {
   if (transaction.create || !transaction.to) {
-    console.log(`https://etherscan.io/tx/${transaction.hash}`);
+    console.log(toEtherscanTx(transaction.hash));
   }
 }
 
 function isTxFromTrackedAddress(transaction) {
+  // @TODO make dynamic
   const trackedAddresss = ['0x7431931094e8bae1ecaa7d0b57d2284e121f760e'];
 
   // tracked wallet moved
   if (trackedAddresss.includes(transaction.from)) {
-    console.log(`${transaction.from}: https://etherscan.io/tx/${transaction.hash}`);
+    console.log(`${transaction.from}: ${toEtherscanTx(transaction.hash)}`);
   }
 }
 
-function isLogNotable(log) {
-  if (Object.keys(COMMON_ADDRESSES).includes(log.address)) {
+function isEventNotable(log) {
+  // @TODO: make generic
+  // if (Object.keys(COMMON_ADDRESSES).includes(log.address)) {
+  //   console.log(log);
+  // }
+
+  // @TODO: hardcoded
+  if (COMMON_ADDRESSES[log.address]?.name === 'UniswapV2Factory') {
     console.log(log);
   }
 }
 
-async function analyzeBlock({ client, blockNumber, output }) {
+async function uniswapV2PairCreated(events) {
+  // if event = PairCreated, report tokens
+  // also report the Mint event
+}
+
+async function analyzeBlock({ client, blockNumber, outputToFile }) {
   const block = await client.getBlock({ blockNumber });
 
   const promises = [];
@@ -37,9 +53,7 @@ async function analyzeBlock({ client, blockNumber, output }) {
 
   const transactions = await Promise.all(promises);
 
-  if (output) {
-    await fs.promises.writeFile(`${OUTPUT_TX}-${blockNumber.toString()}.json`, JSON.stringify(transactions, replacer, 2));
-  }
+  if (outputToFile) await writeToFile(`${OUTPUT_TXS}-${blockNumber.toString()}.json`, transactions);
 
   for (const transaction of transactions) {
     isTxContractDeployment(transaction)
@@ -47,23 +61,13 @@ async function analyzeBlock({ client, blockNumber, output }) {
   }
 
   // get events
-  const logs = await client.getLogs({ blockHash: block.hash });
+  const events = await client.getLogs({ blockHash: block.hash });
 
-  if (output) {
-    await fs.promises.writeFile(`${OUTPUT_LOGS}-${blockNumber.toString()}.json`, JSON.stringify(logs, replacer, 2));
-  }
+  if (outputToFile) await writeToFile(`${OUTPUT_EVENTS}-${blockNumber.toString()}.json`, events);
 
-  for (const log of logs) {
-    isLogNotable(log);
+  for (const event of events) {
+    isEventNotable(event);
   }
-}
-
-// convert objects with bigint to string
-function replacer(key, value) {
-  if (typeof value === 'bigint') {
-    return value.toString() + 'n';
-  }
-  return value;
 }
 
 module.exports = {

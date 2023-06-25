@@ -8,6 +8,10 @@ const CONFIG = require('../config.json');
 const BLOCK_START = 17551367n;
 const BLOCK_END = 17551400n;
 
+// simulate production, assuming 10 second block times
+const SIMULATE = false;
+const BLOCK_TIME = 10000;
+
 (async () => {
   try {
     const transport = http(CONFIG.rpcLocal);
@@ -17,7 +21,9 @@ const BLOCK_END = 17551400n;
     });
 
     for (let blockNumber = BLOCK_START; blockNumber <= BLOCK_END; blockNumber++) {
-      await analyzeBlock({ client, blockNumber, output: false });
+      await analyzeBlock({ client, blockNumber, outputToFile: false });
+
+      if (SIMULATE) await new Promise(resolve => setTimeout(resolve, BLOCK_TIME));
     }
   } catch (err) {
     console.error(err);

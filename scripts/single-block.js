@@ -15,7 +15,7 @@ const BLOCK_NUMBER = 17551367n;
       transport
     });
 
-    await analyzeBlock({ client, blockNumber: BLOCK_NUMBER, output: true });
+    await analyzeBlock({ client, blockNumber: BLOCK_NUMBER, outputToFile: true });
   } catch (err) {
     console.error(err);
   }

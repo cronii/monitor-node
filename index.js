@@ -20,5 +20,5 @@ async function parseBlockNumber(blockNumber) {
   console.log(`parseBlockNumber: ${blockNumber}`);
   console.log(`https://etherscan.io/block/${blockNumber}`);
 
-  await analyzeBlock({ client, blockNumber, output: false });
+  await analyzeBlock({ client, blockNumber, outputToFile: false });
 };

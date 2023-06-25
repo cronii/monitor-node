@@ -2,16 +2,18 @@
 
 Persistant monitoring/alerting node
 
+init config.json with rpc information
+`npm start`
+`npm single` for single block analysis
+`npm range` for block range analysis
 ## TODO
 
-- ctrl-F for !IMPORTANT
-
+- ctrl-F for @IMPORTANT
+- allow command line args for single and range scripts
 - Dynamic Watched Address Filter
-- Telegram or Discord support
-
-- EC2 or raspberry pi
-- Remote DB (Will have to move from SQLite)
-- Performance tests
+- Telegram or Discord messaging
+- EC2 or raspberry pi deployment
+- DB
 
 ## Reach
 
