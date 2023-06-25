@@ -4,7 +4,7 @@ const { toDexscreenerEth, toEtherscanTx } = require('./utils/utils');
 const UNISWAP_PAIR_CREATED = './reports/uniswap-v2-pair-created.txt';
 
 const TEMP_TRACKED = './reports/temp-activity-tracker'
-const ERROR_LOG = './reports/error-log';
+const ERROR_LOG = './reports/error.log';
 
 async function reportUniswapV2PairCreated(info) {
   const { symbol0, symbol1, pair, value, supplied, totalSupply } = info;
@@ -23,7 +23,7 @@ async function reportTrackedWalletActivity(address, tx) {
 }
 
 async function reportError(report) {
-  await fs.promises.appendFile(ERROR_LOG, JSON.stringify(report, null, 2));
+  await fs.promises.appendFile(ERROR_LOG, `${report.blockNumber}\n`);
 }
 
 module.exports = {

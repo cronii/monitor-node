@@ -5,7 +5,7 @@ const { analyzeBlock } = require('../src/common');
 const CONFIG = require('../config.json');
 
 // testing script for single block analysis
-const BLOCK_NUMBER = 17551367n;
+const BLOCK_NUMBER = 17556072n;
 
 (async () => {
   try {
@@ -15,7 +15,9 @@ const BLOCK_NUMBER = 17551367n;
       transport
     });
 
-    await analyzeBlock({ client, blockNumber: BLOCK_NUMBER, outputToFile: true });
+    const blockNumber = process.argv[2] ? BigInt(process.argv[2]) : BLOCK_NUMBER;
+
+    await analyzeBlock({ client, blockNumber, outputToFile: true });
   } catch (err) {
     console.error(err);
   }

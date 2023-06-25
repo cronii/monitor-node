@@ -44,6 +44,7 @@ async function analyzeBlock({ client, blockNumber, outputToFile }) {
     if (hasWatchedEvent(events)) await analyzeEvents(client, events);
   } catch (err) {
     console.log(`Event Listener Error: ${blockNumber.toString()}`);
+    console.log(err);
     await reportError({ blockNumber: blockNumber.toString() })
   }
 
@@ -93,6 +94,8 @@ async function analyzeEvents(client, events) {
 }
 
 async function uniswapV2PairCreated(client, eventGroup) {
+  // @PITFALL, this assumes atomic tx that both creates pair and mints liquidity
+  console.log('UniswapV2 Pair Created');
   // get pair tokens
   const encodedPairCreatedEvent = eventGroup.find(event => event.topics[0] === PAIR_CREATED_TOPIC);
   const pairCreatedEvent = decodeEventLog({
@@ -109,21 +112,22 @@ async function uniswapV2PairCreated(client, eventGroup) {
 
   // search for mint event
   const encodedMintEvent = eventGroup.find(event => event.topics[0] === MINT_TOPIC);
+  if (!encodedMintEvent) throw new Error('Mint Event Not Found');
   const mintEvent = decodeEventLog({
     abi: UniswapV2PairABI,
     data: encodedMintEvent.data,
     topics: encodedMintEvent.topics
   });
 
-  // @PITFALL assuming token1 is common token (ie WETH)
   const { amount0, amount1 } = mintEvent.args;
-  const supplied = formatUnits(amount0, token0.decimals);
-  const value = formatUnits(amount1, token1.decimals);
-  const totalSupply = formatUnits(token0.totalSupply, token0.decimals);
+  const invertPair = isCommonToken(tokenAddress0);
+  const supplied = invertPair ? formatUnits(amount1, token1.decimals) : formatUnits(amount0, token0.decimals);
+  const value = invertPair ? formatUnits(amount0, token0.decimals) : formatUnits(amount1, token1.decimals);
+  const totalSupply = invertPair ? formatUnits(token1.totalSupply, token1.decimals) : formatUnits(token0.totalSupply, token0.decimals);
 
   await reportUniswapV2PairCreated({
-    symbol0: token0.symbol,
-    symbol1: token1.symbol,
+    symbol0: invertPair ? token1.symbol : token0.symbol,
+    symbol1: invertPair ? token0.symbol : token1.symbol,
     pair,
     value,
     supplied,
@@ -156,7 +160,8 @@ async function toToken(client, address) {
     ]
   });
 
-  // @PITFALL we dont check for contract read failures
+  if (results.some(result => result.status === 'failure')) throw new Error('Failed ERC20 Read', { details: address });
+
   return {
     symbol: results[0].result,
     decimals: results[1].result,
