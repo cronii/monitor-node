@@ -15,7 +15,7 @@ const UniswapV2PairABI = require('./abis/UniswapV2Pair.json');
 const PAIR_CREATED_TOPIC = '0x0d3648bd0f6ba80134a33ba9275ac585d9d315f0ad8355cddefde31afa28d0e9';
 const MINT_TOPIC = '0x4c209b5fc8ad50758f13e2e1088ba56a560dff690a1c6fef26394f4c03821c4f'
 
-async function analyzeBlock({ client, blockNumber, outputToFile }) {
+async function analyzeBlock({ client, blockNumber, outputToFile, pool }) {
   console.time(blockNumber.toString());
   const block = await client.getBlock({ blockNumber });
 
@@ -39,9 +39,8 @@ async function analyzeBlock({ client, blockNumber, outputToFile }) {
 
   if (outputToFile) await writeToFile(`${OUTPUT_EVENTS}-${blockNumber.toString()}.json`, events);
 
-  // if a watched event is emitted, do thorough event analysis, otherwise skip
   try {
-    if (hasWatchedEvent(events)) await analyzeEvents(client, events);
+    await analyzeEvents(client, events, pool);
   } catch (err) {
     console.log(`Event Listener Error: ${blockNumber.toString()}`);
     console.log(err);
@@ -73,13 +72,14 @@ function getEventGroup(events, transactionIndex) {
   return events.filter(event => event.transactionIndex === transactionIndex);
 }
 
-function hasWatchedEvent(events) {
-  // @TODO this is hardcoded
-  return events.some(event => COMMON_ADDRESSES[event.address]?.name === 'UniswapV2Factory');
-}
+// function hasWatchedEvent(events) {
+//   // @TODO this is hardcoded
+//   return events.some(event => COMMON_ADDRESSES[event.address]?.name === 'UniswapV2Factory') ||
+//   events.some(event => COMMON_ADDRESSES[event.address]?.name === 'UniswapV2Factory');
+// }
 
 // @TODO following event functions need to turned into a class or abstracted away
-async function analyzeEvents(client, events) {
+async function analyzeEvents(client, events, pool) {
   for (const event of events) {
     // @TODO this is hardcoded
     if (COMMON_ADDRESSES[event.address]?.name === 'UniswapV2Factory') {
@@ -88,6 +88,18 @@ async function analyzeEvents(client, events) {
       if (topics[0] === PAIR_CREATED_TOPIC) {
         const eventGroup = getEventGroup(events, transactionIndex);
         await uniswapV2PairCreated(client, eventGroup);
+      }
+    }
+
+    if (pool && event.address === pool) {
+      const pairEvent = decodeEventLog({
+        abi: UniswapV2PairABI,
+        data: event.data,
+        topics: event.topics
+      });
+
+      if (pairEvent.eventName === 'Swap') {
+        console.log(pairEvent);
       }
     }
   }

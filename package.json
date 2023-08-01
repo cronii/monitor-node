@@ -6,10 +6,14 @@
   "scripts": {
     "start": "node ./index.js",
     "single": "node scripts/single-block.js",
-    "range": "node scripts/block-range.js"
+    "range": "node scripts/block-range.js",
+    "backfill-swaps": "node scripts/backfill-swaps.js"
   },
   "author": "",
   "dependencies": {
+    "cors": "^2.8.5",
+    "ethers": "^5.7.2",
+    "express": "^4.18.2",
     "sqlite": "^4.2.1",
     "sqlite3": "^5.1.6",
     "viem": "^1.1.6"

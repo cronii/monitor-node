@@ -5,11 +5,11 @@ const { analyzeBlock } = require('../src/common');
 const CONFIG = require('../config.json');
 
 // testing script for single block analysis
-const BLOCK_NUMBER = 17556072n;
+const BLOCK_NUMBER = 17758954;
 
 (async () => {
   try {
-    const transport = http(CONFIG.rpcLocal);
+    const transport = http(CONFIG.rpcRemote);
     const client = createPublicClient({
       chain: mainnet,
       transport

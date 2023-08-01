@@ -18,6 +18,10 @@ function isCommonToken(address) {
   return COMMON_TOKENS[address];
 }
 
+function isWETH(address) {
+  return COMMON_TOKENS[address]?.symbol === 'WETH';
+}
+
 async function writeToFile(filename, object) {
   await fs.promises.writeFile(filename, JSON.stringify(object, replacer, 2));
 }
@@ -32,6 +36,7 @@ function replacer(key, value) {
 
 module.exports = {
   isCommonToken,
+  isWETH,
   toDexscreenerEth,
   toEtherscanAddress,
   toEtherscanTx,
