@@ -20,4 +20,9 @@ const { open } = require('sqlite');
     tag TEXT,
     type TEXT,
     FOREIGN KEY (address) REFERENCES wallets (address))`);
+  await db.run(`CREATE VIEW v_wallet_tags AS 
+    SELECT address, count(CASE WHEN type = "Token" THEN 1 END) as tokens, count(CASE WHEN type = "Behavior" THEN 1 END) as behavior, count(CASE WHEN type = "TG Bot" THEN 1 END) as tg_bot
+    FROM wallet_tags
+    GROUP BY address
+    ORDER BY tokens DESC`);
 })();
