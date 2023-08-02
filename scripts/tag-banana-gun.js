@@ -6,7 +6,7 @@ const { createPublicClient, http } = require('viem');
 const { tagWallet } = require('../src/utils');
 const CONFIG = require('../config.json');
 
-const TABLE_NAME = 'TETRIS_WETH_V2';
+const TABLE_NAME = 'MARBLE_WETH_V2';
 const WALLET_TAG = 'Banana Gun Wallet';
 const TAG_TYPE = 'TG Bot';
 const ALLOW_DUPE_TAG = false;
@@ -30,7 +30,8 @@ const ALLOW_DUPE_TAG = false;
     '0x1e5249dca89d43bd917b7d05199e4eff4fb9a4df',
     '0x96d491789efea52f127f58e24709282517f3d73d',
     '0xa0a23c6a4a22e7dd981d5e24c0cd79dc358ff8d0',
-    '0x136f79961b7ab2a91104ec892c288e225e100214'
+    '0x136f79961b7ab2a91104ec892c288e225e100214',
+    '0xcb31a3d26a8e346fd0e6c8cf0dbb4b9e775f1a92'
   ];
 
   const getBananaGunUsersQuery = `SELECT * FROM ${TABLE_NAME} WHERE event_name = ? and sender_address = ?`;

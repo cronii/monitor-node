@@ -41,8 +41,30 @@ async function tagWallet(db, address, tag, type, allowDupe = false) {
     if (count > 0) return;
   }
 
-  const insertNewWalleetTagQuery = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
-  await db.run(insertNewWalleetTagQuery, [address, tag, type]);
+  const insertNewWalletTagQuery = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
+  await db.run(insertNewWalletTagQuery, [address, tag, type]);
+}
+
+async function tagWallets(db, addresses, tag, type, allowDupe = false) {
+  const changes = { newWallets: 0, newWalletTags: 0 };
+
+  for (const address of addresses) {
+    const insertNewWalletQuery = 'INSERT OR IGNORE INTO wallets (address) VALUES (?)';
+    const { changes: newWalletChange } = await db.run(insertNewWalletQuery, [address]);
+    changes.newWallets += newWalletChange;
+
+    if (!allowDupe) {
+      const checkQuery = 'SELECT COUNT(*) AS count FROM wallet_tags WHERE address = ? and tag = ?';
+      const { count } = await db.get(checkQuery, [address, tag]);
+      if (count > 0) continue;
+    }
+
+    const insertNewWalletTagQuery = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
+    const { changes: newWalletTagChange } = await db.run(insertNewWalletTagQuery, [address, tag, type]);
+    changes.newWalletTags += newWalletTagChange;
+  }
+
+  return changes;
 }
 
 // convert objects with bigint to string
@@ -61,5 +83,6 @@ module.exports = {
   toEtherscanTx,
   writeToFile,
   nameWallet,
-  tagWallet
+  tagWallet,
+  tagWallets
 }
