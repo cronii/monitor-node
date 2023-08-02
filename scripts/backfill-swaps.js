@@ -75,8 +75,11 @@ const WATCHED_EVENTS = [SWAP, MINT, BURN];
     const token0 = await toToken(client, flipTokens ? rawPairData[1].result : rawPairData[0].result);
     const token1 = await toToken(client, flipTokens ? rawPairData[0].result : rawPairData[1].result);
 
+    const token0Symbol = token0.symbol.toUpperCase();
+    const token1Symbol = token1.symbol.toUpperCase();
+
     // @TODO hardcoded for v2
-    const pairName = `${token0.symbol}_${token1.symbol}_V2`;
+    const pairName = `${token0Symbol}_${token1Symbol}_V2`;
 
     await db.run(`CREATE TABLE IF NOT EXISTS pairs (
       pair TEXT PRIMARY KEY,
@@ -103,11 +106,21 @@ const WATCHED_EVENTS = [SWAP, MINT, BURN];
       token1_out TEXT,
       CONSTRAINT unique_combination UNIQUE (block, tx_index, log_index))`);
 
-    const blockStart = contractData.blockNumber;
+    const getPairsQuery = 'SELECT * FROM pairs WHERE pair = ?';
+    const pair = await db.get(getPairsQuery, [pairName]);
+
+    let blockStart;
+    if (pair) {
+      console.log(pair)
+      console.log('Pair already exists, starting from last block ', pair.lastBlock);
+      blockStart = BigInt(pair.lastBlock) + 1n;
+    } else {
+      blockStart = contractData.blockNumber;
+    }
     const blockEnd = await client.getBlockNumber();
 
-    const insertPairQuery = 'INSERT OR REPLACE INTO pairs (pair, address, flip_tokens, token0, token0_decimals, token1, token1_decimals, startBlock, lastBlock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
-    await db.run(insertPairQuery, [pairName, pairAddress, flipTokens, token0.symbol, token0.decimals, token1.symbol, token1.decimals, Number(blockStart), Number(blockEnd)]);
+    const insertPairQuery = 'INSERT OR REPLACE INTO pairs (pair, address, flip_tokens, token0, token0_decimals, token1, token1_decimals, startBlock) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    await db.run(insertPairQuery, [pairName, pairAddress, flipTokens, token0Symbol, token0.decimals, token1Symbol, token1.decimals, Number(blockStart)]);
 
     let counter = 0;
     for (let chunkStart = blockStart; chunkStart <= blockEnd; chunkStart += CHUNK_SIZE) {
@@ -149,6 +162,9 @@ const WATCHED_EVENTS = [SWAP, MINT, BURN];
         }
       });
     }
+
+    const updatePairQuery = 'UPDATE pairs SET lastBlock = ? WHERE pair = ?';
+    await db.run(updatePairQuery, [Number(blockEnd), pairName]);
 
     console.timeEnd('backfill-swaps');
     console.log(counter);
