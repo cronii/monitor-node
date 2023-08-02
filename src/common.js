@@ -1,5 +1,5 @@
 const { decodeEventLog, formatUnits, trim } = require('viem');
-const { isCommonToken, writeToFile } = require('./utils/utils');
+const { isCommonToken, writeToFile } = require('./utils');
 const { reportError, reportTrackedWalletActivity, reportUniswapV2PairCreated } = require('./reporter');
 
 const COMMON_ADDRESSES = require('./utils/common-addresses.json');

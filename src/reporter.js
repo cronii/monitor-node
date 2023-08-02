@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { toDexscreenerEth, toEtherscanAddress, toEtherscanTx } = require('./utils/utils');
+const { toDexscreenerEth, toEtherscanAddress, toEtherscanTx } = require('./utils');
 
 const UNISWAP_PAIR_CREATED = './reports/uniswap-v2-pair-created.txt';
 

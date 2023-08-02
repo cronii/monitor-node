@@ -10,7 +10,7 @@ const CONFIG = require('../config.json');
 const ERC20ABI = require('../src/abis/erc20.read.json');
 const UniswapV2PairABI = require('../src/abis/UniswapV2Pair.json');
 
-const { isCommonToken, isWETH } = require('../src/utils/utils');
+const { isCommonToken, isWETH } = require('../src/utils');
 
 // MARBLE/WETH UNISWAP V2
 const PAIR_ADDRESS = '0xdcd34cf0bb038821cac55db957c00f9f89f01610';
@@ -100,7 +100,8 @@ const WATCHED_EVENTS = [SWAP, MINT, BURN];
       token0_in TEXT,
       token0_out TEXT,
       token1_in TEXT,
-      token1_out TEXT)`);
+      token1_out TEXT,
+      CONSTRAINT unique_combination UNIQUE (block, tx_index, log_index))`);
 
     const blockStart = contractData.blockNumber;
     const blockEnd = await client.getBlockNumber();

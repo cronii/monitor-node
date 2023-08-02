@@ -6,7 +6,7 @@ const { createPublicClient, http, formatUnits } = require('viem');
 const CONFIG = require('./config.json');
 const UniswapV2PairABI = require('./src/abis/UniswapV2Pair.json');
 const { generatePerformanceData } = require('./src/performance');
-const { writeToFile } = require('./src/utils/utils');
+const { writeToFile } = require('./src/utils');
 
 (async () => {
   const db = await open({
