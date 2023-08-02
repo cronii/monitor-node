@@ -1,6 +1,8 @@
 const fs = require('fs');
-
+const fetch = require('node-fetch');
 const COMMON_TOKENS = require('./common-tokens.json');
+const CONFIG = require('../config.json');
+const ERC20ABI = require('../abis/erc20.read.json');
 
 function toEtherscanAddress(address) {
   return `https://etherscan.io/address/${address}`;
@@ -67,6 +69,49 @@ async function tagWallets(db, addresses, tag, type, allowDupe = false) {
   return changes;
 }
 
+async function getContractCreationData(address) {
+  const apiCall = `https://api.etherscan.io/api?module=contract&action=getcontractcreation&contractaddresses=${address}&apikey=${CONFIG.etherscanApiKey}`;
+
+  const response = await fetch(apiCall);
+  const data = await response.json();
+
+  return data.result[0];
+}
+
+async function toToken(client, address) {
+  if (isCommonToken(address)) return isCommonToken(address);
+
+  const erc20Contract = {
+    address,
+    abi: ERC20ABI
+  };
+
+  const results = await client.multicall({
+    contracts: [
+      {
+        ...erc20Contract,
+        functionName: 'symbol'
+      },
+      {
+        ...erc20Contract,
+        functionName: 'decimals'
+      },
+      {
+        ...erc20Contract,
+        functionName: 'totalSupply'
+      }
+    ]
+  });
+
+  if (results.some(result => result.status === 'failure')) throw new Error('Failed ERC20 Read', { details: address });
+
+  return {
+    symbol: results[0].result,
+    decimals: results[1].result,
+    totalSupply: results[2].result
+  }
+}
+
 // convert objects with bigint to string
 function replacer(key, value) {
   if (typeof value === 'bigint') {
@@ -84,5 +129,7 @@ module.exports = {
   writeToFile,
   nameWallet,
   tagWallet,
-  tagWallets
+  tagWallets,
+  getContractCreationData,
+  toToken
 }

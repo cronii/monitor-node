@@ -1,4 +1,3 @@
-const fetch = require('node-fetch');
 const { mainnet } = require('viem/chains');
 const { createPublicClient, http, decodeEventLog } = require('viem');
 
@@ -6,11 +5,9 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 
 const CONFIG = require('../config.json');
-
-const ERC20ABI = require('../src/abis/erc20.read.json');
 const UniswapV2PairABI = require('../src/abis/UniswapV2Pair.json');
 
-const { isCommonToken, isWETH } = require('../src/utils');
+const { isWETH, getContractCreationData, toToken } = require('../src/utils');
 
 // MARBLE/WETH UNISWAP V2
 const PAIR_ADDRESS = '0xdcd34cf0bb038821cac55db957c00f9f89f01610';
@@ -172,46 +169,3 @@ const WATCHED_EVENTS = [SWAP, MINT, BURN];
     console.error(err);
   }
 })();
-
-async function getContractCreationData(address) {
-  const apiCall = `https://api.etherscan.io/api?module=contract&action=getcontractcreation&contractaddresses=${address}&apikey=${CONFIG.etherscanApiKey}`;
-
-  const response = await fetch(apiCall);
-  const data = await response.json();
-
-  return data.result[0];
-}
-
-async function toToken(client, address) {
-  if (isCommonToken(address)) return isCommonToken(address);
-
-  const erc20Contract = {
-    address,
-    abi: ERC20ABI
-  };
-
-  const results = await client.multicall({
-    contracts: [
-      {
-        ...erc20Contract,
-        functionName: 'symbol'
-      },
-      {
-        ...erc20Contract,
-        functionName: 'decimals'
-      },
-      {
-        ...erc20Contract,
-        functionName: 'totalSupply'
-      }
-    ]
-  });
-
-  if (results.some(result => result.status === 'failure')) throw new Error('Failed ERC20 Read', { details: address });
-
-  return {
-    symbol: results[0].result,
-    decimals: results[1].result,
-    totalSupply: results[2].result
-  }
-}
