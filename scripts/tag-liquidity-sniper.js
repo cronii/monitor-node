@@ -11,6 +11,7 @@ const { tagWallet } = require('../src/utils');
 
   const TABLE_NAME = 'TETRIS_WETH_V2';
   const WALLET_TAG = 'Liquidity Sniper';
+  const TAG_TYPE = 'Behavior';
   const ALLOW_DUPE_TAG = true;
 
   const getInitialLiquidityAddQuery = `SELECT * FROM ${TABLE_NAME} ORDER BY block, tx_index, log_index`;
@@ -23,6 +24,6 @@ const { tagWallet } = require('../src/utils');
 
   for (const liquiditySniper of liquiditySnipers) {
     const { maker_address: address } = liquiditySniper;
-    await tagWallet(db, address, WALLET_TAG, ALLOW_DUPE_TAG);
+    await tagWallet(db, address, WALLET_TAG, TAG_TYPE, ALLOW_DUPE_TAG);
   }
 })();

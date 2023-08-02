@@ -18,5 +18,6 @@ const { open } = require('sqlite');
     wallet_tag_id INTEGER PRIMARY KEY AUTOINCREMENT,
     address TEXT,
     tag TEXT,
+    type TEXT,
     FOREIGN KEY (address) REFERENCES wallets (address))`);
 })();

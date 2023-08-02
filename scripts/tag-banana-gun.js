@@ -8,6 +8,7 @@ const CONFIG = require('../config.json');
 
 const TABLE_NAME = 'TETRIS_WETH_V2';
 const WALLET_TAG = 'Banana Gun Wallet';
+const TAG_TYPE = 'TG Bot';
 const ALLOW_DUPE_TAG = false;
 
 (async () => {
@@ -64,6 +65,6 @@ const ALLOW_DUPE_TAG = false;
   }
 
   for (const maker of uniqueMakers) {
-    await tagWallet(db, maker, WALLET_TAG, ALLOW_DUPE_TAG);
+    await tagWallet(db, maker, WALLET_TAG, TAG_TYPE, ALLOW_DUPE_TAG);
   }
 })();

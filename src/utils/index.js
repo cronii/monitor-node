@@ -31,7 +31,7 @@ async function nameWallet(db, address, name, tag) {
   await db.run(insertNewWalletQuery, [address]);
 }
 
-async function tagWallet(db, address, tag, allowDupe = false) {
+async function tagWallet(db, address, tag, type, allowDupe = false) {
   const insertNewWalletQuery = 'INSERT OR IGNORE INTO wallets (address) VALUES (?)';
   await db.run(insertNewWalletQuery, [address]);
 
@@ -41,8 +41,8 @@ async function tagWallet(db, address, tag, allowDupe = false) {
     if (count > 0) return;
   }
 
-  const insertNewWalleetTagQuery = 'INSERT OR IGNORE INTO wallet_tags (address, tag) VALUES (?, ?)';
-  await db.run(insertNewWalleetTagQuery, [address, tag]);
+  const insertNewWalleetTagQuery = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
+  await db.run(insertNewWalleetTagQuery, [address, tag, type]);
 }
 
 // convert objects with bigint to string
