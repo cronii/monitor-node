@@ -1,7 +1,7 @@
 const fs = require('fs');
 const fetch = require('node-fetch');
 const COMMON_TOKENS = require('./common-tokens.json');
-const CONFIG = require('../config.json');
+const CONFIG = require('../../config.json');
 const ERC20ABI = require('../abis/erc20.read.json');
 
 function toEtherscanAddress(address) {
@@ -103,9 +103,10 @@ async function toToken(client, address) {
     ]
   });
 
-  if (results.some(result => result.status === 'failure')) throw new Error('Failed ERC20 Read', { details: address });
+  if (results.some(result => result.status === 'failure')) throw new Error(`Failed ERC20 Read ${address}`, { details: address });
 
   return {
+    address,
     symbol: results[0].result,
     decimals: results[1].result,
     totalSupply: results[2].result
