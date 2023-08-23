@@ -30,6 +30,22 @@ app.get('/api/swaps', async (req, res) => {
 });
 
 app.get('/api/pairs', async (req, res) => {
+  try {
+    const db = await open({
+      filename: 'monitor-node.db',
+      driver: sqlite3.Database
+    });
+
+    const getPairsQuery = 'SELECT * FROM pairs';
+    const results = await db.all(getPairsQuery);
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch data from the database' });
+  }
+});
+
+app.get('/api/pair', async (req, res) => {
   const quote = req.query.quote;
   const base = req.query.base;
   const pool = req.query.pool;

@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const COMMON_TOKENS = require('./common-tokens.json');
 const CONFIG = require('../../config.json');
 const ERC20ABI = require('../abis/erc20.read.json');
+const { getAddress } = require('viem');
 
 function toEtherscanAddress(address) {
   return `https://etherscan.io/address/${address}`;
@@ -21,7 +22,7 @@ function isCommonToken(address) {
 }
 
 function isWETH(address) {
-  return COMMON_TOKENS[address]?.symbol === 'WETH';
+  return COMMON_TOKENS[getAddress(address)]?.symbol === 'WETH';
 }
 
 async function writeToFile(filename, object) {

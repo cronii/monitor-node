@@ -25,4 +25,24 @@ const { open } = require('sqlite');
     FROM wallet_tags
     GROUP BY address
     ORDER BY tokens DESC`);
+
+  await db.run(`CREATE TABLE IF NOT EXISTS screener_pairs (
+    pair TEXT PRIMARY KEY,
+    chainId INT,
+    pairAddress TEXT,
+    flipTokens BOOLEAN,
+    token0 TEXT,
+    token0Symbol TEXT,
+    token0Decimals INT,
+    token1 TEXT,
+    token1Symbol TEXT,
+    token1Decimals INT,
+    deployBlock INT,
+    lastUpdateBlock INT,
+    createdTimestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+
+  await db.run(`CREATE VIEW IF NOT EXISTS watched_pairs AS
+    SELECT pair, pairAddress, flipTokens, deployBlock, lastUpdateBlock, createdTimestamp
+    FROM screener_pairs
+    WHERE createdTimestamp >= datetime('now', '-12 hours')`)
 })();

@@ -1,6 +1,9 @@
 const { createPublicClient, webSocket } = require('viem');
 const { mainnet } = require('viem/chains');
 
+const sqlite3 = require('sqlite3');
+const { open } = require('sqlite');
+
 const { analyzeBlock } = require('./src/common');
 const CONFIG = require('./config.json');
 
@@ -20,5 +23,11 @@ async function parseBlockNumber(blockNumber) {
   // console.log(`parseBlockNumber: ${blockNumber}`);
   // console.log(`https://etherscan.io/block/${blockNumber}`);
 
-  await analyzeBlock({ client, blockNumber, outputToFile: false });
+  const db = await open({
+    filename: 'monitor-node.db',
+    driver: sqlite3.Database
+  });
+
+  await analyzeBlock({ client, db, blockNumber, outputToFile: false });
+  await db.close();
 };
