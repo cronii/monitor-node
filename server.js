@@ -7,10 +7,9 @@ const app = express();
 const PORT = 5001;
 app.use(cors());
 
-app.get('/api/swaps', async (req, res) => {
-  const quote = req.query.quote;
-  const base = req.query.base;
-  const pool = req.query.pool;
+app.get('/api/events', async (req, res) => {
+  const { chain } = req.query;
+  const pair = req.query.pair.toLowerCase();
 
   try {
     const db = await open({
@@ -18,10 +17,11 @@ app.get('/api/swaps', async (req, res) => {
       driver: sqlite3.Database
     });
 
-    const tableName = `${quote}_${base}_${pool}`.toUpperCase();
-    const getSwapsQuery = `SELECT * FROM ${tableName} ORDER BY block, tx_index, log_index`;
+    const getEventsQuery = `SELECT * FROM screener_events 
+      WHERE chainId = ? AND pairAddress = ?
+      ORDER BY block, txIndex, logIndex`;
 
-    const results = await db.all(getSwapsQuery);
+    const results = await db.all(getEventsQuery, [chain, pair]);
     res.json(results);
   } catch (err) {
     console.error(err);
@@ -36,7 +36,12 @@ app.get('/api/pairs', async (req, res) => {
       driver: sqlite3.Database
     });
 
-    const getPairsQuery = 'SELECT * FROM pairs';
+    const getPairsQuery = `SELECT sp.*, COUNT(se.txId) AS eventCount
+      FROM screener_pairs sp
+      LEFT JOIN screener_events se ON sp.pairAddress = se.pairAddress AND sp.chainId = se.chainId
+      GROUP BY sp.pairAddress;
+      ORDER BY deployBlock DESC`;
+
     const results = await db.all(getPairsQuery);
     res.json(results);
   } catch (err) {
@@ -46,9 +51,8 @@ app.get('/api/pairs', async (req, res) => {
 });
 
 app.get('/api/pair', async (req, res) => {
-  const quote = req.query.quote;
-  const base = req.query.base;
-  const pool = req.query.pool;
+  const { chain } = req.query;
+  const pair = req.query.pair.toLowerCase();
 
   try {
     const db = await open({
@@ -56,9 +60,11 @@ app.get('/api/pair', async (req, res) => {
       driver: sqlite3.Database
     });
 
-    const tableName = `${quote}_${base}_${pool}`.toUpperCase();
-    const results = await db.get('SELECT * FROM pairs WHERE pair = ?', [tableName]);
+    const getPairQuery = `SELECT * FROM screener_pairs
+      WHERE chainId = ? AND pairAddress = ?
+      ORDER BY deployBlock DESC`;
 
+    const results = await db.get(getPairQuery, [chain, pair]);
     res.json(results);
   } catch (err) {
     console.error(err);
@@ -66,7 +72,19 @@ app.get('/api/pair', async (req, res) => {
   }
 });
 
-app.get('/api/wallets', async (req, res) => {
+app.get('/api/watched-pairs', async (req, res) => {
+  try {
+    const db = await open({
+      filename: 'monitor-node.db',
+      driver: sqlite3.Database
+    });
+
+    const results = await db.all('SELECT * FROM watched_pairs');
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch data from the database' });
+  }
 });
 
 app.listen(PORT, () => {

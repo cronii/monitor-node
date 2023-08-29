@@ -28,8 +28,8 @@ const { open } = require('sqlite');
 
   await db.run(`CREATE TABLE IF NOT EXISTS screener_pairs (
     pair TEXT PRIMARY KEY,
-    chainId INT,
     pairAddress TEXT,
+    chainId INT,
     flipTokens BOOLEAN,
     token0 TEXT,
     token0Symbol TEXT,
@@ -39,10 +39,44 @@ const { open } = require('sqlite');
     token1Decimals INT,
     deployBlock INT,
     lastUpdateBlock INT,
-    createdTimestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+    createdTimestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_combination UNIQUE (pair, pairAddress, chainId))`);
+
+  await db.run(`CREATE TABLE IF NOT EXISTS screener_events (
+    txId INTEGER PRIMARY KEY AUTOINCREMENT,
+    pairAddress TEXT,
+    chainId INT,
+    block INT,
+    txIndex INT,
+    logIndex INT,
+    txHash TEXT,
+    eventName TEXT,
+    senderAddress TEXT,
+    makerAddress TEXT,
+    token0In TEXT,
+    token0Out TEXT,
+    token1In TEXT,
+    token1Out TEXT,
+    CONSTRAINT unique_combination UNIQUE (block, txIndex, logIndex))`);
+
+  await db.run(`CREATE TABLE IF NOT EXISTS honeypot_is_results (
+    honeypotId INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT,
+    pairAddress TEXT,
+    chainId INT,
+    isHoneypot BOOLEAN,
+    simulatedSuccess BOOLEAN,
+    buyTax INT,
+    sellTax INT,
+    transferTax INT,
+    CONSTRAINT unique_combination UNIQUE (token, pairAddress, chainId))`);
 
   await db.run(`CREATE VIEW IF NOT EXISTS watched_pairs AS
-    SELECT pair, pairAddress, flipTokens, deployBlock, lastUpdateBlock, createdTimestamp
+    SELECT screener_pairs.pair, screener_pairs.pairAddress, flipTokens, deployBlock, lastUpdateBlock, buyTax, sellTax, transferTax, createdTimestamp
     FROM screener_pairs
-    WHERE createdTimestamp >= datetime('now', '-12 hours')`)
+    INNER JOIN honeypot_is_results ON screener_pairs.pairAddress = honeypot_is_results.pairAddress
+    WHERE honeypot_is_results.isHoneypot = false
+    AND honeypot_is_results.buyTax < 6
+    AND honeypot_is_results.sellTax < 6
+    AND createdTimestamp >= datetime('now', '-12 hours')`);
 })();

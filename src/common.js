@@ -1,15 +1,14 @@
 const { decodeEventLog, trim } = require('viem');
-const { isWETH, toToken } = require('./utils');
+const { isWETH, toToken, honeypotIsRequest } = require('./utils');
 const { reportError } = require('./reporter');
 
 const COMMON_ADDRESSES = require('./utils/common-addresses.json');
+const { UniswapV2FactoryABI, UniswapV2PairABI } = require('./abis');
 
-// @TODO: this needs to be abstracted/refactored away
-const UniswapV2FactoryABI = require('./abis/UniswapV2Factory.json');
-const UniswapV2PairABI = require('./abis/UniswapV2Pair.json');
-
-const { PAIR_CREATED_TOPIC, ETH_CHAIN_ID, UNISWAP_V2_FACTORY, SWAP, MINT, BURN } = require('./constants');
+const { PAIR_CREATED_TOPIC, ETH_CHAIN_ID, UNISWAP_V2_FACTORY, SWAP, MINT, BURN } = require('./utils/constants');
 const WATCHED_EVENTS = [SWAP, MINT, BURN];
+
+const { insertScreenerPairQuery, insertScreenerEventQuery, insertHoneypotIsResultsQuery } = require('./utils/queries');
 
 async function analyzeBlock({ client, db, blockNumber }) {
   const blockNumberString = blockNumber.toString();
@@ -53,57 +52,39 @@ function isUniswapV2PairCreated(address, topics) {
   return COMMON_ADDRESSES[address]?.name === UNISWAP_V2_FACTORY && topics[0] === PAIR_CREATED_TOPIC;
 }
 
-function filterDumbTickers(ticker) {
-  return (ticker.includes('DOGE') || ticker.includes('BABY') || ticker.includes('SHIBA') || ticker.includes('2.0') || ticker.includes('PEPE'));
-}
+// function filterDumbTickers(ticker) {
+//   return (ticker.includes('DOGE') || ticker.includes('BABY') || ticker.includes('SHIBA') || ticker.includes('2.0') || ticker.includes('PEPE'));
+// }
 
 async function uniswapV2PairCreated({ client, db, blockNumber, event }) {
   const { data, topics } = event;
   const pairCreatedEvent = decodeEventLog({ abi: UniswapV2FactoryABI, data, topics });
 
-  const topic1 = trim(topics[1]);
-  const topic2 = trim(topics[2]);
+  const topic1 = trim(topics[1]).toLowerCase();
+  const topic2 = trim(topics[2]).toLowerCase();
   const flipTokens = isWETH(topic1);
   const token0 = await toToken(client, flipTokens ? topic2 : topic1);
   const token1 = await toToken(client, flipTokens ? topic1 : topic2);
-  const pairAddress = pairCreatedEvent.args[0];
+  const pairAddress = pairCreatedEvent.args[0].toLowerCase();
 
   const token0Symbol = token0.symbol.toUpperCase();
   const token1Symbol = token1.symbol.toUpperCase();
 
-  if (filterDumbTickers(token0Symbol) || filterDumbTickers(token1Symbol)) return;
+  // if (filterDumbTickers(token0Symbol) || filterDumbTickers(token1Symbol)) return;
+
+  // @TODO: this is a slow request, attempt to replace with a local solution
+  try {
+    const { honeypotResult, simulationResult } = await honeypotIsRequest(token0.address, pairAddress, ETH_CHAIN_ID);
+    await db.run(insertHoneypotIsResultsQuery, [token0.address, pairAddress, ETH_CHAIN_ID, honeypotResult.isHoneypot, simulationResult?.success, simulationResult?.buyTax, simulationResult?.sellTax, simulationResult?.transferTax]);
+  } catch (err) {
+    console.log(`honeypotIsRequest error: ${token0.address} / ${token1.address}`);
+    console.log(err);
+  }
 
   const pairName = `${token0Symbol}_${token1Symbol}_V2`;
 
-  const insertScreenerPairQuery = `INSERT OR IGNORE INTO screener_pairs (
-    pair,
-    chainId,
-    pairAddress,
-    flipTokens,
-    token0,
-    token0Symbol,
-    token0Decimals,
-    token1,
-    token1Symbol,
-    token1Decimals,
-    deployBlock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
   await db.run(insertScreenerPairQuery, [pairName, ETH_CHAIN_ID, pairAddress, flipTokens, token0.address, token0Symbol, token0.decimals, token1.address, token1Symbol, token1.decimals, Number(blockNumber)]);
-  await db.run(`CREATE TABLE IF NOT EXISTS screener_events (
-    txId INTEGER PRIMARY KEY AUTOINCREMENT,
-    chainId INT,
-    pairAddress TEXT,
-    block INT,
-    txIndex INT,
-    logIndex INT,
-    txHash TEXT,
-    eventName TEXT,
-    senderAddress TEXT,
-    makerAddress TEXT,
-    token0In TEXT,
-    token0Out TEXT,
-    token1In TEXT,
-    token1Out TEXT,
-    CONSTRAINT unique_combination UNIQUE (block, txIndex, logIndex))`);
+
   return { pairAddress, pair: pairName, flipTokens };
 }
 
@@ -130,22 +111,7 @@ async function watchedPairEvent({ client, db, pair, event }) {
     }
 
     if (flipTokens) amounts = [amounts[2], amounts[3], amounts[0], amounts[1]];
-
-    const insertScreenerEventQuery = `INSERT INTO screener_events (
-      block,
-      chainId,
-      pairAddress, 
-      txIndex, 
-      logIndex, 
-      txHash, 
-      eventName, 
-      senderAddress, 
-      makerAddress, 
-      token0In, 
-      token0Out, 
-      token1In, 
-      token1Out) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    await db.run(insertScreenerEventQuery, [Number(blockNumber), ETH_CHAIN_ID, pairAddress, transactionIndex, logIndex, transactionHash, eventName, sender, maker, ...amounts]);
+    await db.run(insertScreenerEventQuery, [Number(blockNumber), ETH_CHAIN_ID, pairAddress, transactionIndex, logIndex, transactionHash, eventName, sender.toLowerCase(), maker.toLowerCase(), ...amounts]);
   }
 }
 

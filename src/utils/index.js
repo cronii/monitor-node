@@ -3,7 +3,6 @@ const fetch = require('node-fetch');
 const COMMON_TOKENS = require('./common-tokens.json');
 const CONFIG = require('../../config.json');
 const ERC20ABI = require('../abis/erc20.read.json');
-const { getAddress } = require('viem');
 
 function toEtherscanAddress(address) {
   return `https://etherscan.io/address/${address}`;
@@ -22,7 +21,7 @@ function isCommonToken(address) {
 }
 
 function isWETH(address) {
-  return COMMON_TOKENS[getAddress(address)]?.symbol === 'WETH';
+  return COMMON_TOKENS[address]?.symbol === 'WETH';
 }
 
 async function writeToFile(filename, object) {
@@ -114,6 +113,15 @@ async function toToken(client, address) {
   }
 }
 
+async function honeypotIsRequest(address, pair, chain = 1) {
+  const apiCall = `https://api.honeypot.is/v2/IsHoneypot?address=${address}&pair=${pair}&chainID=${chain}`;
+
+  const response = await fetch(apiCall);
+  const data = await response.json();
+
+  return data;
+}
+
 // convert objects with bigint to string
 function replacer(key, value) {
   if (typeof value === 'bigint') {
@@ -133,5 +141,6 @@ module.exports = {
   tagWallet,
   tagWallets,
   getContractCreationData,
-  toToken
+  toToken,
+  honeypotIsRequest
 }
