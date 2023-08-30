@@ -8,8 +8,8 @@ const { analyzeBlock } = require('../src/common');
 const CONFIG = require('../config.json');
 
 // testing script for range of block analysis
-const BLOCK_START = 18017400n;
-const BLOCK_END = 18017600n;
+const BLOCK_START = 18021748n;
+const BLOCK_END = 18021911n;
 
 // simulate production block times
 const SIMULATE = false;

@@ -74,8 +74,8 @@ async function uniswapV2PairCreated({ client, db, blockNumber, event }) {
 
   // @TODO: this is a slow request, attempt to replace with a local solution
   try {
-    const { honeypotResult, simulationResult } = await honeypotIsRequest(token0.address, pairAddress, ETH_CHAIN_ID);
-    await db.run(insertHoneypotIsResultsQuery, [token0.address, pairAddress, ETH_CHAIN_ID, honeypotResult.isHoneypot, simulationResult?.success, simulationResult?.buyTax, simulationResult?.sellTax, simulationResult?.transferTax]);
+    const { honeypotResult, simulationSuccess, simulationResult } = await honeypotIsRequest(token0.address, pairAddress, ETH_CHAIN_ID);
+    await db.run(insertHoneypotIsResultsQuery, [token0.address, pairAddress, ETH_CHAIN_ID, honeypotResult?.isHoneypot, simulationSuccess, simulationResult?.buyTax, simulationResult?.sellTax, simulationResult?.transferTax]);
   } catch (err) {
     console.log(`honeypotIsRequest error: ${token0.address} / ${token1.address}`);
     console.log(err);

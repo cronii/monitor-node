@@ -79,7 +79,13 @@ app.get('/api/watched-pairs', async (req, res) => {
       driver: sqlite3.Database
     });
 
-    const results = await db.all('SELECT * FROM watched_pairs');
+    const getWatchedPairsQuery = `SELECT wp.*, COUNT(se.txId) AS eventCount
+      FROM watched_pairs wp
+      LEFT JOIN screener_events se ON wp.pairAddress = se.pairAddress AND wp.chainId = se.chainId
+      GROUP BY wp.pairAddress
+      ORDER BY deployBlock DESC`;
+
+    const results = await db.all(getWatchedPairsQuery);
     res.json(results);
   } catch (err) {
     console.error(err);

@@ -72,11 +72,13 @@ const { open } = require('sqlite');
     CONSTRAINT unique_combination UNIQUE (token, pairAddress, chainId))`);
 
   await db.run(`CREATE VIEW IF NOT EXISTS watched_pairs AS
-    SELECT screener_pairs.pair, screener_pairs.pairAddress, flipTokens, deployBlock, lastUpdateBlock, buyTax, sellTax, transferTax, createdTimestamp
-    FROM screener_pairs
-    INNER JOIN honeypot_is_results ON screener_pairs.pairAddress = honeypot_is_results.pairAddress
-    WHERE honeypot_is_results.isHoneypot = false
-    AND honeypot_is_results.buyTax < 6
-    AND honeypot_is_results.sellTax < 6
-    AND createdTimestamp >= datetime('now', '-12 hours')`);
+    SELECT sp.token0Symbol, sp.token1Symbol, sp.token0, sp.token1, sp.pair, sp.pairAddress, sp.chainId, flipTokens, deployBlock, lastUpdateBlock, buyTax, sellTax, transferTax, createdTimestamp
+    FROM screener_pairs sp
+    INNER JOIN honeypot_is_results hir ON sp.pairAddress = hir.pairAddress
+    WHERE hir.isHoneypot = false
+    AND hir.simulatedSuccess = true
+    AND hir.buyTax < 6
+    AND hir.sellTax < 6
+    AND createdTimestamp >= datetime('now', '-12 hours')
+    ORDER BY sp.deployBlock DESC`);
 })();
