@@ -7,11 +7,14 @@ const SWAP = 'Swap';
 const MINT = 'Mint';
 const BURN = 'Burn';
 
+const TOKEN_TAG = 'token';
+
 module.exports = {
   PAIR_CREATED_TOPIC,
   ETH_CHAIN_ID,
   UNISWAP_V2_FACTORY,
   SWAP,
   MINT,
-  BURN
+  BURN,
+  TOKEN_TAG
 };

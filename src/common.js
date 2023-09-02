@@ -5,7 +5,7 @@ const { reportError } = require('./reporter');
 const COMMON_ADDRESSES = require('./utils/common-addresses.json');
 const { UniswapV2FactoryABI, UniswapV2PairABI } = require('./abis');
 
-const { PAIR_CREATED_TOPIC, ETH_CHAIN_ID, UNISWAP_V2_FACTORY, SWAP, MINT, BURN } = require('./utils/constants');
+const { PAIR_CREATED_TOPIC, ETH_CHAIN_ID, UNISWAP_V2_FACTORY, SWAP, MINT, BURN, TOKEN_TAG } = require('./utils/constants');
 const WATCHED_EVENTS = [SWAP, MINT, BURN];
 
 const { insertScreenerPairQuery, insertScreenerEventQuery, insertHoneypotIsResultsQuery } = require('./utils/queries');
@@ -28,7 +28,7 @@ async function analyzeBlock({ client, db, blockNumber }) {
 }
 
 async function analyzeEvents({ client, db, blockNumber, events }) {
-  const getWatchedPairsQuery = 'SELECT pairAddress, pair, flipTokens FROM watched_pairs';
+  const getWatchedPairsQuery = 'SELECT pairAddress, pair, flipTokens, token0Symbol FROM watched_pairs';
   const watchedPairs = await db.all(getWatchedPairsQuery);
   const watchedPairAddresses = watchedPairs.map(pair => pair.pairAddress.toLowerCase());
 
@@ -89,7 +89,7 @@ async function uniswapV2PairCreated({ client, db, blockNumber, event }) {
 }
 
 async function watchedPairEvent({ client, db, pair, event }) {
-  const { pairAddress, flipTokens } = pair;
+  const { pairAddress, flipTokens, token0Symbol } = pair;
   const { data, topics } = event;
   const { eventName, args } = decodeEventLog({ abi: UniswapV2PairABI, data, topics });
 
@@ -112,6 +112,13 @@ async function watchedPairEvent({ client, db, pair, event }) {
 
     if (flipTokens) amounts = [amounts[2], amounts[3], amounts[0], amounts[1]];
     await db.run(insertScreenerEventQuery, [Number(blockNumber), ETH_CHAIN_ID, pairAddress, transactionIndex, logIndex, transactionHash, eventName, sender.toLowerCase(), maker.toLowerCase(), ...amounts]);
+
+    // insert and tag unique wallets
+    const insertMakerWallet = 'INSERT OR IGNORE INTO wallets (address) VALUES (?)';
+    await db.run(insertMakerWallet, [maker.toLowerCase()]);
+
+    const insertMakerWalletTag = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
+    await db.run(insertMakerWalletTag, [maker.toLowerCase(), token0Symbol, TOKEN_TAG]);
   }
 }
 

@@ -7,21 +7,22 @@ const { open } = require('sqlite');
     driver: sqlite3.Database
   });
 
-  await db.run(`CREATE TABLE IF NOT EXISTS scripts (
-    script TEXT PRIMARY KEY,
-    start_block INT,
-    last_block INT)`);
   await db.run(`CREATE TABLE IF NOT EXISTS wallets (
-    address TEXT PRIMARY KEY,
+    address TEXT UNIQUE PRIMARY KEY,
+    name TEXT)`);
+  await db.run(`CREATE TABLE IF NOT EXISTS contracts (
+    address TEXT UNIQUE PRIMARY KEY,
     name TEXT)`);
   await db.run(`CREATE TABLE IF NOT EXISTS wallet_tags (
     wallet_tag_id INTEGER PRIMARY KEY AUTOINCREMENT,
     address TEXT,
     tag TEXT,
     type TEXT,
-    FOREIGN KEY (address) REFERENCES wallets (address))`);
+    FOREIGN KEY (address) REFERENCES wallets (address),
+    CONSTRAINT unique_combination UNIQUE (address, tag))`);
+
   await db.run(`CREATE VIEW IF NOT EXISTS v_wallet_tags AS 
-    SELECT address, count(CASE WHEN type = "Token" THEN 1 END) as tokens, count(CASE WHEN type = "Behavior" THEN 1 END) as behavior, count(CASE WHEN type = "TG Bot" THEN 1 END) as tg_bot
+    SELECT address, count(CASE WHEN type = "token" THEN 1 END) as tokens, count(CASE WHEN type = "behavior" THEN 1 END) as behavior, count(CASE WHEN type = "tg bot" THEN 1 END) as tg_bot
     FROM wallet_tags
     GROUP BY address
     ORDER BY tokens DESC`);
@@ -58,6 +59,23 @@ const { open } = require('sqlite');
     token1In TEXT,
     token1Out TEXT,
     CONSTRAINT unique_combination UNIQUE (block, txIndex, logIndex))`);
+
+  await db.run(`CREATE TABLE IF NOT EXISTS historical_pairs (
+    pair TEXT PRIMARY KEY,
+    pairAddress TEXT,
+    chainId INT,
+    flipTokens BOOLEAN,
+    token0 TEXT,
+    token0Symbol TEXT,
+    token0Decimals INT,
+    token1 TEXT,
+    token1Symbol TEXT,
+    token1Decimals INT,
+    deployBlock INT,
+    lastBlock INT,
+    lastUpdateBlock INT,
+    createdTimestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_combination UNIQUE (pair, pairAddress, chainId))`);
 
   await db.run(`CREATE TABLE IF NOT EXISTS honeypot_is_results (
     honeypotId INTEGER PRIMARY KEY AUTOINCREMENT,

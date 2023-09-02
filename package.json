@@ -7,7 +7,7 @@
     "start": "node ./index.js",
     "single": "node scripts/single-block.js",
     "range": "node scripts/block-range.js",
-    "backfill-swaps": "node scripts/backfill-swaps.js"
+    "backfill-events": "node scripts/backfill-events.js"
   },
   "author": "",
   "dependencies": {
