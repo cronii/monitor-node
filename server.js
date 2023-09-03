@@ -93,6 +93,45 @@ app.get('/api/watched-pairs', async (req, res) => {
   }
 });
 
+app.get('/api/contracts', async (req, res) => {
+  try {
+    const db = await open({
+      filename: 'monitor-node.db',
+      driver: sqlite3.Database
+    });
+
+    const getContractTagsQuery = 'SELECT * FROM contracts';
+    const results = await db.all(getContractTagsQuery);
+
+    const contractsDictionary = results.reduce((dictionary, contract) => {
+      dictionary[contract.address] = contract.name;
+      return dictionary;
+    }, {});
+
+    res.json(contractsDictionary);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch data from the database' });
+  }
+});
+
+app.get('/api/wallets', async (req, res) => {
+  try {
+    const db = await open({
+      filename: 'monitor-node.db',
+      driver: sqlite3.Database
+    });
+
+    const getWalletTagsQuery = 'SELECT * FROM wallets';
+
+    const results = await db.all(getWalletTagsQuery);
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch data from the database' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

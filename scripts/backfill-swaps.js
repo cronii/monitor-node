@@ -25,7 +25,7 @@ const WATCHED_EVENTS = [SWAP, MINT, BURN];
 (async () => {
   try {
     console.time('backfill-swaps');
-    const transport = http(CONFIG.rpcLocal);
+    const transport = http(CONFIG.rpcRemote);
     const client = createPublicClient({
       chain: mainnet,
       transport

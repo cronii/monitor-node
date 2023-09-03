@@ -17,7 +17,7 @@ const ALLOW_DUPE_TAG = false;
     driver: sqlite3.Database
   });
 
-  const transport = http(CONFIG.rpcLocal);
+  const transport = http(CONFIG.rpcRemote);
   const client = createPublicClient({
     chain: mainnet,
     transport

@@ -8,6 +8,7 @@ const MINT = 'Mint';
 const BURN = 'Burn';
 
 const TOKEN_TAG = 'token';
+const PAIR_CREATOR_TAG = 'insider';
 
 module.exports = {
   PAIR_CREATED_TOPIC,
@@ -16,5 +17,6 @@ module.exports = {
   SWAP,
   MINT,
   BURN,
-  TOKEN_TAG
+  TOKEN_TAG,
+  PAIR_CREATOR_TAG
 };

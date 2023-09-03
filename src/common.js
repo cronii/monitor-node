@@ -5,7 +5,7 @@ const { reportError } = require('./reporter');
 const COMMON_ADDRESSES = require('./utils/common-addresses.json');
 const { UniswapV2FactoryABI, UniswapV2PairABI } = require('./abis');
 
-const { PAIR_CREATED_TOPIC, ETH_CHAIN_ID, UNISWAP_V2_FACTORY, SWAP, MINT, BURN, TOKEN_TAG } = require('./utils/constants');
+const { PAIR_CREATED_TOPIC, ETH_CHAIN_ID, UNISWAP_V2_FACTORY, SWAP, MINT, BURN, TOKEN_TAG, PAIR_CREATOR_TAG } = require('./utils/constants');
 const WATCHED_EVENTS = [SWAP, MINT, BURN];
 
 const { insertScreenerPairQuery, insertScreenerEventQuery, insertHoneypotIsResultsQuery } = require('./utils/queries');
@@ -18,7 +18,7 @@ async function analyzeBlock({ client, db, blockNumber }) {
   const events = await client.getLogs({ blockHash: block.hash });
 
   try {
-    await analyzeEvents({ client, db, blockNumber: blockNumberString, events });
+    await analyzeEvents({ client, db, events });
   } catch (err) {
     console.log(err);
     await reportError({ blockNumber: blockNumberString })
@@ -27,7 +27,7 @@ async function analyzeBlock({ client, db, blockNumber }) {
   console.timeEnd(blockNumber.toString());
 }
 
-async function analyzeEvents({ client, db, blockNumber, events }) {
+async function analyzeEvents({ client, db, events }) {
   const getWatchedPairsQuery = 'SELECT pairAddress, pair, flipTokens, token0Symbol FROM watched_pairs';
   const watchedPairs = await db.all(getWatchedPairsQuery);
   const watchedPairAddresses = watchedPairs.map(pair => pair.pairAddress.toLowerCase());
@@ -36,7 +36,7 @@ async function analyzeEvents({ client, db, blockNumber, events }) {
     const { address, topics } = event;
 
     if (isUniswapV2PairCreated(address, topics)) {
-      const newPair = await uniswapV2PairCreated({ client, db, blockNumber, event });
+      const newPair = await uniswapV2PairCreated({ client, db, event });
       if (newPair) {
         watchedPairs.push(newPair);
         watchedPairAddresses.push(newPair.pairAddress);
@@ -56,9 +56,12 @@ function isUniswapV2PairCreated(address, topics) {
 //   return (ticker.includes('DOGE') || ticker.includes('BABY') || ticker.includes('SHIBA') || ticker.includes('2.0') || ticker.includes('PEPE'));
 // }
 
-async function uniswapV2PairCreated({ client, db, blockNumber, event }) {
+async function uniswapV2PairCreated({ client, db, event }) {
   const { data, topics } = event;
   const pairCreatedEvent = decodeEventLog({ abi: UniswapV2FactoryABI, data, topics });
+
+  const { blockNumber, transactionHash } = event;
+  const { from: pairCreator } = await client.getTransaction({ hash: transactionHash });
 
   const topic1 = trim(topics[1]).toLowerCase();
   const topic2 = trim(topics[2]).toLowerCase();
@@ -82,8 +85,14 @@ async function uniswapV2PairCreated({ client, db, blockNumber, event }) {
   }
 
   const pairName = `${token0Symbol}_${token1Symbol}_V2`;
-
   await db.run(insertScreenerPairQuery, [pairName, ETH_CHAIN_ID, pairAddress, flipTokens, token0.address, token0Symbol, token0.decimals, token1.address, token1Symbol, token1.decimals, Number(blockNumber)]);
+
+  const insertPairCreatorWallet = 'INSERT OR IGNORE INTO wallets (address) VALUES (?)';
+  await db.run(insertPairCreatorWallet, [pairCreator.toLowerCase()]);
+
+  const insertPairCreatorWalletTag = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
+  await db.run(insertPairCreatorWalletTag, [pairCreator.toLowerCase(), token0Symbol, TOKEN_TAG]);
+  await db.run(insertPairCreatorWalletTag, [pairCreator.toLowerCase(), `${token0Symbol} Pair Creator`, PAIR_CREATOR_TAG]);
 
   return { pairAddress, pair: pairName, flipTokens };
 }
@@ -119,6 +128,9 @@ async function watchedPairEvent({ client, db, pair, event }) {
 
     const insertMakerWalletTag = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
     await db.run(insertMakerWalletTag, [maker.toLowerCase(), token0Symbol, TOKEN_TAG]);
+
+    const updatePairUpdated = 'UPDATE screener_pairs SET lastUpdateBlock = ? WHERE pairAddress = ?';
+    await db.run(updatePairUpdated, [Number(blockNumber), pairAddress]);
   }
 }
 

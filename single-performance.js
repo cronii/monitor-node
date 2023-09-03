@@ -14,7 +14,7 @@ const { writeToFile } = require('./src/utils');
     driver: sqlite3.Database
   });
 
-  const transport = http(CONFIG.rpcLocal);
+  const transport = http(CONFIG.rpcRemote);
   const client = createPublicClient({
     chain: mainnet,
     transport

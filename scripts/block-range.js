@@ -8,8 +8,8 @@ const { analyzeBlock } = require('../src/common');
 const CONFIG = require('../config.json');
 
 // testing script for range of block analysis
-const BLOCK_START = 18021748n;
-const BLOCK_END = 18021911n;
+const BLOCK_START = 18050541n;
+const BLOCK_END = 18051541n;
 
 // simulate production block times
 const SIMULATE = false;
@@ -17,7 +17,7 @@ const BLOCK_TIME = 10000;
 
 (async () => {
   try {
-    const transport = http(CONFIG.rpcLocal);
+    const transport = http(CONFIG.rpcRemote);
     const client = createPublicClient({
       chain: mainnet,
       transport

@@ -16,7 +16,7 @@ const CHUNK_SIZE = 25n;
 (async () => {
   try {
     console.time(SCRIPT_NAME);
-    const transport = http(CONFIG.rpcLocal);
+    const transport = http(CONFIG.rpcRemote);
     const client = createPublicClient({
       chain: mainnet,
       transport
