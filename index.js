@@ -7,7 +7,7 @@ const { open } = require('sqlite');
 const { analyzeBlock } = require('./src/common');
 const CONFIG = require('./config.json');
 
-const transport = webSocket(CONFIG.wsLocal);
+const transport = webSocket(CONFIG.wsRemote);
 const client = createPublicClient({
   chain: mainnet,
   transport
