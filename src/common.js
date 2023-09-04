@@ -5,7 +5,7 @@ const { reportError } = require('./reporter');
 const COMMON_ADDRESSES = require('./utils/common-addresses.json');
 const { UniswapV2FactoryABI, UniswapV2PairABI } = require('./abis');
 
-const { PAIR_CREATED_TOPIC, ETH_CHAIN_ID, UNISWAP_V2_FACTORY, SWAP, MINT, BURN, TOKEN_TAG, PAIR_CREATOR_TAG } = require('./utils/constants');
+const { PAIR_CREATED_TOPIC, ETH_CHAIN_ID, UNISWAP_V2_FACTORY, SWAP, MINT, BURN, TOKEN_TAG, DEPLOYER_TAG, INSIDER_TAG } = require('./utils/constants');
 const WATCHED_EVENTS = [SWAP, MINT, BURN];
 
 const { insertScreenerPairQuery, insertScreenerEventQuery, insertHoneypotIsResultsQuery } = require('./utils/queries');
@@ -18,7 +18,8 @@ async function analyzeBlock({ client, db, blockNumber }) {
   const events = await client.getLogs({ blockHash: block.hash });
 
   try {
-    await analyzeEvents({ client, db, events });
+    const txs = await analyzeTransactions({ client, db, txHashes: block.transactions });
+    await analyzeEvents({ client, db, events, txs });
   } catch (err) {
     console.log(err);
     await reportError({ blockNumber: blockNumberString })
@@ -27,7 +28,29 @@ async function analyzeBlock({ client, db, blockNumber }) {
   console.timeEnd(blockNumber.toString());
 }
 
-async function analyzeEvents({ client, db, events }) {
+async function analyzeTransactions({ client, db, txHashes }) {
+  const txPromises = txHashes.map(txHash => client.getTransaction({ hash: txHash }));
+  const txs = await Promise.all(txPromises);
+
+  for (const tx of txs) {
+    if (tx.creates !== null) {
+      // const address = tx.creates;
+      const deployer = tx.from;
+
+      const insertDeployerWallet = 'INSERT OR IGNORE INTO wallets (address) VALUES (?)';
+      await db.run(insertDeployerWallet, [deployer.toLowerCase()]);
+
+      const insertPairCreatorWalletTag = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
+      await db.run(insertPairCreatorWalletTag, [deployer.toLowerCase(), DEPLOYER_TAG, INSIDER_TAG]);
+    }
+  }
+
+  return txs;
+}
+
+// @TODO: reuse TXS from analyzeTransactions
+
+async function analyzeEvents({ client, db, events, txs }) {
   const getWatchedPairsQuery = 'SELECT pairAddress, pair, flipTokens, token0Symbol FROM watched_pairs';
   const watchedPairs = await db.all(getWatchedPairsQuery);
   const watchedPairAddresses = watchedPairs.map(pair => pair.pairAddress.toLowerCase());
@@ -36,14 +59,14 @@ async function analyzeEvents({ client, db, events }) {
     const { address, topics } = event;
 
     if (isUniswapV2PairCreated(address, topics)) {
-      const newPair = await uniswapV2PairCreated({ client, db, event });
+      const newPair = await uniswapV2PairCreated({ client, db, event, txs });
       if (newPair) {
         watchedPairs.push(newPair);
         watchedPairAddresses.push(newPair.pairAddress);
       }
     } else if (watchedPairAddresses.includes(address.toLowerCase())) {
       const pair = watchedPairs[watchedPairAddresses.indexOf(address.toLowerCase())];
-      await watchedPairEvent({ client, db, pair, event });
+      await watchedPairEvent({ client, db, pair, event, txs });
     }
   }
 }
@@ -56,12 +79,11 @@ function isUniswapV2PairCreated(address, topics) {
 //   return (ticker.includes('DOGE') || ticker.includes('BABY') || ticker.includes('SHIBA') || ticker.includes('2.0') || ticker.includes('PEPE'));
 // }
 
-async function uniswapV2PairCreated({ client, db, event }) {
-  const { data, topics } = event;
+async function uniswapV2PairCreated({ client, db, event, txs }) {
+  const { data, topics, blockNumber, transactionIndex } = event;
   const pairCreatedEvent = decodeEventLog({ abi: UniswapV2FactoryABI, data, topics });
 
-  const { blockNumber, transactionHash } = event;
-  const { from: pairCreator } = await client.getTransaction({ hash: transactionHash });
+  const { from: pairCreator } = txs[transactionIndex];
 
   const topic1 = trim(topics[1]).toLowerCase();
   const topic2 = trim(topics[2]).toLowerCase();
@@ -92,19 +114,19 @@ async function uniswapV2PairCreated({ client, db, event }) {
 
   const insertPairCreatorWalletTag = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
   await db.run(insertPairCreatorWalletTag, [pairCreator.toLowerCase(), token0Symbol, TOKEN_TAG]);
-  await db.run(insertPairCreatorWalletTag, [pairCreator.toLowerCase(), `${token0Symbol} Pair Creator`, PAIR_CREATOR_TAG]);
+  await db.run(insertPairCreatorWalletTag, [pairCreator.toLowerCase(), `${token0Symbol} Pair Creator`, INSIDER_TAG]);
 
   return { pairAddress, pair: pairName, flipTokens };
 }
 
-async function watchedPairEvent({ client, db, pair, event }) {
+async function watchedPairEvent({ db, pair, event, txs }) {
   const { pairAddress, flipTokens, token0Symbol } = pair;
   const { data, topics } = event;
   const { eventName, args } = decodeEventLog({ abi: UniswapV2PairABI, data, topics });
 
   if (WATCHED_EVENTS.includes(eventName)) {
     const { blockNumber, transactionIndex, logIndex, transactionHash } = event;
-    const { from: maker } = await client.getTransaction({ hash: transactionHash });
+    const { from: maker } = txs[transactionIndex];
     const { sender } = args;
 
     let amounts = [];

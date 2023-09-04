@@ -23,6 +23,7 @@ async function parseBlockNumber(blockNumber) {
   // console.log(`parseBlockNumber: ${blockNumber}`);
   // console.log(`https://etherscan.io/block/${blockNumber}`);
 
+  // does not seem like db needs to reopened for each block
   const db = await open({
     filename: 'monitor-node.db',
     driver: sqlite3.Database

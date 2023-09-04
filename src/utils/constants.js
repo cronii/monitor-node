@@ -8,7 +8,8 @@ const MINT = 'Mint';
 const BURN = 'Burn';
 
 const TOKEN_TAG = 'token';
-const PAIR_CREATOR_TAG = 'insider';
+const DEPLOYER_TAG = 'deployer';
+const INSIDER_TAG = 'insider';
 
 module.exports = {
   PAIR_CREATED_TOPIC,
@@ -18,5 +19,6 @@ module.exports = {
   MINT,
   BURN,
   TOKEN_TAG,
-  PAIR_CREATOR_TAG
+  DEPLOYER_TAG,
+  INSIDER_TAG
 };
