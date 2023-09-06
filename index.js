@@ -1,12 +1,5 @@
 const { createPublicClient, webSocket } = require('viem');
 const { mainnet } = require('viem/chains');
-const express = require('express');
-const http = require('http');
-const WebSocket = require('ws');
-
-const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
 
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
@@ -48,8 +41,18 @@ async function broadcastToClients(type, data) {
   });
 }
 
+const express = require('express');
+const http = require('http');
+const WebSocket = require('ws');
+const cors = require('cors');
+
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
 const clients = [];
 const PORT = 5002;
+app.use(cors());
 
 wss.on('connection', (ws) => {
   console.log('Client connected');
@@ -61,6 +64,6 @@ wss.on('connection', (ws) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Listening on port ${PORT}`);
 });
