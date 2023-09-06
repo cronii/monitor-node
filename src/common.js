@@ -1,4 +1,4 @@
-const { decodeEventLog, trim, formatUnits } = require('viem');
+const { decodeEventLog, trim } = require('viem');
 const { isWETH, toToken, honeypotIsRequest } = require('./utils');
 const { reportError } = require('./reporter');
 
@@ -178,17 +178,15 @@ async function analyzeWatchedPairs({ client, db }) {
 
   // get base token balances for each pair
   const detailedWatchedPairs = await Promise.all(watchedPairs.map(async watchedPair => {
-    const { pairAddress, flipTokens, token1Decimals } = watchedPair;
+    const { pairAddress, flipTokens } = watchedPair;
     const pairReserves = await client.readContract({
       address: pairAddress,
       abi: UniswapV2PairABI,
       functionName: 'getReserves'
     });
 
-    const baseToken = flipTokens ? pairReserves[1] : pairReserves[0];
-    const baseBalance = formatUnits(baseToken, token1Decimals);
-
-    return { ...watchedPair, baseBalance };
+    const baseReserves = flipTokens ? pairReserves[0] : pairReserves[1];
+    return { ...watchedPair, baseReserves: baseReserves.toString() };
   }));
 
   return detailedWatchedPairs;
