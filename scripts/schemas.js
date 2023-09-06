@@ -89,6 +89,10 @@ const { open } = require('sqlite');
     transferTax INT,
     CONSTRAINT unique_combination UNIQUE (token, pairAddress, chainId))`);
 
+  await db.run(`CREATE TABLE IF NOT EXISTS wallets_for_review (
+    address TEXT UNIQUE PRIMARY KEY,
+    reviewed BOOLEAN)`);
+
   await db.run(`CREATE VIEW IF NOT EXISTS watched_pairs AS
     SELECT sp.token0Symbol, sp.token1Symbol, sp.token0, sp.token1, sp.pair, sp.pairAddress, sp.chainId, flipTokens, deployBlock, lastUpdateBlock, buyTax, sellTax, transferTax, createdTimestamp
     FROM screener_pairs sp

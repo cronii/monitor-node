@@ -1,10 +1,17 @@
 const { createPublicClient, webSocket } = require('viem');
 const { mainnet } = require('viem/chains');
+const express = require('express');
+const http = require('http');
+const WebSocket = require('ws');
+
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 
-const { analyzeBlock } = require('./src/common');
+const { analyzeBlock, analyzeWatchedPairs } = require('./src/common');
 const CONFIG = require('./config.json');
 
 const transport = webSocket(CONFIG.wsRemote);
@@ -30,5 +37,30 @@ async function parseBlockNumber(blockNumber) {
   });
 
   await analyzeBlock({ client, db, blockNumber, outputToFile: false });
+  const watchedPairs = await analyzeWatchedPairs({ client, db });
+  await broadcastToClients('watchedPairs', watchedPairs);
   await db.close();
 };
+
+async function broadcastToClients(type, data) {
+  clients.forEach((client) => {
+    client.send(JSON.stringify({ type, data }));
+  });
+}
+
+const clients = [];
+const PORT = 5002;
+
+wss.on('connection', (ws) => {
+  console.log('Client connected');
+  clients.push(ws);
+
+  ws.on('close', () => {
+    console.log('Client disconnected');
+    clients.splice(clients.indexOf(ws), 1);
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});

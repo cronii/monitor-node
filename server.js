@@ -132,6 +132,22 @@ app.get('/api/wallets', async (req, res) => {
   }
 });
 
+app.get('/api/wallets-for-review', async (req, res) => {
+  try {
+    const db = await open({
+      filename: 'monitor-node.db',
+      driver: sqlite3.Database
+    });
+
+    const getWalletsForReviewQuery = 'SELECT * FROM wallets_for_review';
+    const results = await db.all(getWalletsForReviewQuery);
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch data from the database' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

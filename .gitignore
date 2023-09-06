@@ -3,6 +3,7 @@ output/
 reports/
 monitor-node.db
 monitor-node.db-journal
+.DS_Store
 
 # Logs
 logs

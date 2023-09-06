@@ -3,10 +3,10 @@ const { open } = require('sqlite');
 const { mainnet } = require('viem/chains');
 const { createPublicClient, http, formatUnits } = require('viem');
 
-const CONFIG = require('./config.json');
-const UniswapV2PairABI = require('./src/abis/UniswapV2Pair.json');
-const { generatePerformanceData } = require('./src/performance');
-const { writeToFile } = require('./src/utils');
+const CONFIG = require('../config.json');
+const UniswapV2PairABI = require('../src/abis/UniswapV2Pair.json');
+const { generatePerformanceData } = require('../src/performance');
+const { writeToFile } = require('../src/utils');
 
 (async () => {
   const db = await open({
@@ -20,13 +20,13 @@ const { writeToFile } = require('./src/utils');
     transport
   });
 
-  const tableName = 'TETRIS_WETH_V2'
+  const tableName = 'BULLET_WETH_V2'
   const {
     address: pairAddress,
     token0_decimals: token0Decimals,
     token1_decimals: token1Decimals,
     flip_token: flipTokens
-  } = await db.get('SELECT * FROM pairs');
+  } = await db.get('SELECT * FROM historical_pairs');
 
   const pairReserves = await client.readContract({
     address: pairAddress,
@@ -44,5 +44,5 @@ const { writeToFile } = require('./src/utils');
   const swaps = await db.all(`SELECT * FROM ${tableName} WHERE event_name = ? ORDER BY block, tx_index, log_index`, ['Swap']);
   const performanceData = generatePerformanceData(swaps, token0Decimals, token1Decimals, currentPrice);
 
-  writeToFile('./reports/performance.json', performanceData);
+  writeToFile(`./reports/performance-${tableName}.json`, performanceData);
 })();

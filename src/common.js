@@ -1,11 +1,21 @@
-const { decodeEventLog, trim } = require('viem');
+const { decodeEventLog, trim, formatUnits } = require('viem');
 const { isWETH, toToken, honeypotIsRequest } = require('./utils');
 const { reportError } = require('./reporter');
 
 const COMMON_ADDRESSES = require('./utils/common-addresses.json');
 const { UniswapV2FactoryABI, UniswapV2PairABI } = require('./abis');
 
-const { PAIR_CREATED_TOPIC, ETH_CHAIN_ID, UNISWAP_V2_FACTORY, SWAP, MINT, BURN, TOKEN_TAG, DEPLOYER_TAG, INSIDER_TAG } = require('./utils/constants');
+const {
+  PAIR_CREATED_TOPIC,
+  ETH_CHAIN_ID,
+  UNISWAP_V2_FACTORY,
+  SWAP,
+  MINT,
+  BURN,
+  TOKEN_TAG,
+  // DEPLOYER_TAG,
+  INSIDER_TAG
+} = require('./utils/constants');
 const WATCHED_EVENTS = [SWAP, MINT, BURN];
 
 const { insertScreenerPairQuery, insertScreenerEventQuery, insertHoneypotIsResultsQuery } = require('./utils/queries');
@@ -20,6 +30,8 @@ async function analyzeBlock({ client, db, blockNumber }) {
   try {
     const txs = await analyzeTransactions({ client, db, txHashes: block.transactions });
     await analyzeEvents({ client, db, events, txs });
+
+    // @TODO check liquidity of watched pairs?
   } catch (err) {
     console.log(err);
     await reportError({ blockNumber: blockNumberString })
@@ -32,18 +44,18 @@ async function analyzeTransactions({ client, db, txHashes }) {
   const txPromises = txHashes.map(txHash => client.getTransaction({ hash: txHash }));
   const txs = await Promise.all(txPromises);
 
-  for (const tx of txs) {
-    if (tx.creates !== null) {
-      // const address = tx.creates;
-      const deployer = tx.from;
+  // for (const tx of txs) {
+  //   if (tx.creates !== null) {
+  //     // const address = tx.creates;
+  //     const deployer = tx.from;
 
-      const insertDeployerWallet = 'INSERT OR IGNORE INTO wallets (address) VALUES (?)';
-      await db.run(insertDeployerWallet, [deployer.toLowerCase()]);
+  //     const insertDeployerWallet = 'INSERT OR IGNORE INTO wallets (address) VALUES (?)';
+  //     await db.run(insertDeployerWallet, [deployer.toLowerCase()]);
 
-      const insertPairCreatorWalletTag = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
-      await db.run(insertPairCreatorWalletTag, [deployer.toLowerCase(), DEPLOYER_TAG, INSIDER_TAG]);
-    }
-  }
+  //     const insertPairCreatorWalletTag = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
+  //     await db.run(insertPairCreatorWalletTag, [deployer.toLowerCase(), DEPLOYER_TAG, INSIDER_TAG]);
+  //   }
+  // }
 
   return txs;
 }
@@ -156,7 +168,34 @@ async function watchedPairEvent({ db, pair, event, txs }) {
   }
 }
 
+async function analyzeWatchedPairs({ client, db }) {
+  const getWatchedPairsQuery = `SELECT wp.*, COUNT(se.txId) AS eventCount
+      FROM watched_pairs wp
+      LEFT JOIN screener_events se ON wp.pairAddress = se.pairAddress AND wp.chainId = se.chainId
+      GROUP BY wp.pairAddress
+      ORDER BY deployBlock DESC`;
+  const watchedPairs = await db.all(getWatchedPairsQuery);
+
+  // get base token balances for each pair
+  const detailedWatchedPairs = await Promise.all(watchedPairs.map(async watchedPair => {
+    const { pairAddress, flipTokens, token1Decimals } = watchedPair;
+    const pairReserves = await client.readContract({
+      address: pairAddress,
+      abi: UniswapV2PairABI,
+      functionName: 'getReserves'
+    });
+
+    const baseToken = flipTokens ? pairReserves[1] : pairReserves[0];
+    const baseBalance = formatUnits(baseToken, token1Decimals);
+
+    return { ...watchedPair, baseBalance };
+  }));
+
+  return detailedWatchedPairs;
+}
+
 module.exports = {
   analyzeBlock,
-  watchedPairEvent
+  watchedPairEvent,
+  analyzeWatchedPairs
 };
