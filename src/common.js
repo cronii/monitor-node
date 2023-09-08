@@ -1,5 +1,5 @@
 const { decodeEventLog, trim } = require('viem');
-const { isWETH, toToken, honeypotIsRequest } = require('./utils');
+const { isWETH, toToken } = require('./utils');
 const { reportError } = require('./reporter');
 
 const COMMON_ADDRESSES = require('./utils/common-addresses.json');
@@ -18,7 +18,7 @@ const {
 } = require('./utils/constants');
 const WATCHED_EVENTS = [SWAP, MINT, BURN];
 
-const { insertScreenerPairQuery, insertScreenerEventQuery, insertHoneypotIsResultsQuery } = require('./utils/queries');
+const { insertScreenerPairQuery, insertScreenerEventQuery } = require('./utils/queries');
 
 async function analyzeBlock({ client, db, blockNumber }) {
   const blockNumberString = blockNumber.toString();
@@ -110,13 +110,13 @@ async function uniswapV2PairCreated({ client, db, event, txs }) {
   // if (filterDumbTickers(token0Symbol) || filterDumbTickers(token1Symbol)) return;
 
   // @TODO: this is a slow request, attempt to replace with a local solution
-  try {
-    const { honeypotResult, simulationSuccess, simulationResult } = await honeypotIsRequest(token0.address, pairAddress, ETH_CHAIN_ID);
-    await db.run(insertHoneypotIsResultsQuery, [token0.address, pairAddress, ETH_CHAIN_ID, honeypotResult?.isHoneypot, simulationSuccess, simulationResult?.buyTax, simulationResult?.sellTax, simulationResult?.transferTax]);
-  } catch (err) {
-    console.log(`honeypotIsRequest error: ${token0.address} / ${token1.address}`);
-    console.log(err);
-  }
+  // try {
+  //   const { honeypotResult, simulationSuccess, simulationResult } = await honeypotIsRequest(token0.address, pairAddress, ETH_CHAIN_ID);
+  //   await db.run(insertHoneypotIsResultsQuery, [token0.address, pairAddress, ETH_CHAIN_ID, honeypotResult?.isHoneypot, simulationSuccess, simulationResult?.buyTax, simulationResult?.sellTax, simulationResult?.transferTax]);
+  // } catch (err) {
+  //   console.log(`honeypotIsRequest error: ${token0.address} / ${token1.address}`);
+  //   console.log(err);
+  // }
 
   const pairName = `${token0Symbol}_${token1Symbol}_V2`;
   await db.run(insertScreenerPairQuery, [pairName, ETH_CHAIN_ID, pairAddress, flipTokens, token0.address, token0Symbol, token0.decimals, token1.address, token1Symbol, token1.decimals, Number(blockNumber)]);

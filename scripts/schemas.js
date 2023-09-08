@@ -93,14 +93,22 @@ const { open } = require('sqlite');
     address TEXT UNIQUE PRIMARY KEY,
     reviewed BOOLEAN)`);
 
-  await db.run(`CREATE VIEW IF NOT EXISTS watched_pairs AS
-    SELECT sp.token0Symbol, sp.token1Symbol, sp.token0, sp.token1, sp.pair, sp.pairAddress, sp.chainId, flipTokens, deployBlock, lastUpdateBlock, buyTax, sellTax, transferTax, createdTimestamp
-    FROM screener_pairs sp
-    INNER JOIN honeypot_is_results hir ON sp.pairAddress = hir.pairAddress
-    WHERE hir.isHoneypot = false
-    AND hir.simulatedSuccess = true
-    AND hir.buyTax < 6
-    AND hir.sellTax < 6
-    AND createdTimestamp >= datetime('now', '-12 hours')
-    ORDER BY sp.deployBlock DESC`);
+  // WITH HONEYPOT TABLE JOIN
+  // await db.run(`CREATE VIEW IF NOT EXISTS watched_pairs AS
+  //   SELECT sp.token0Symbol, sp.token1Symbol, sp.token0, sp.token1, sp.pair, sp.pairAddress, sp.chainId, flipTokens, deployBlock, lastUpdateBlock, buyTax, sellTax, transferTax, createdTimestamp
+  //   FROM screener_pairs sp
+  //   INNER JOIN honeypot_is_results hir ON sp.pairAddress = hir.pairAddress
+  //   WHERE hir.isHoneypot = false
+  //   AND hir.simulatedSuccess = true
+  //   AND hir.buyTax < 6
+  //   AND hir.sellTax < 6
+  //   AND createdTimestamp >= datetime('now', '-12 hours')
+  //   ORDER BY sp.deployBlock DESC`);
+
+  await db.run('DROP VIEW IF EXISTS watched_pairs');
+  await db.run(`CREATE VIEW watched_pairs AS
+    SELECT *
+    FROM screener_pairs
+    WHERE createdTimestamp >= datetime('now', '-24 hours')
+    ORDER BY deployBlock DESC`);
 })();
