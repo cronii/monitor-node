@@ -1,8 +1,7 @@
 const { createPublicClient, http } = require('viem');
 const { mainnet } = require('viem/chains');
 
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+const Database = require('better-sqlite3');
 
 const { analyzeBlock } = require('../src/common');
 const CONFIG = require('../config.json');
@@ -18,15 +17,12 @@ const BLOCK_NUMBER = 17758954;
       transport
     });
 
-    const db = await open({
-      filename: 'monitor-node.db',
-      driver: sqlite3.Database
-    });
+    const db = new Database('monitor-node.db');
 
     const blockNumber = process.argv[2] ? BigInt(process.argv[2]) : BLOCK_NUMBER;
 
     await analyzeBlock({ client, db, blockNumber, outputToFile: false });
-    await db.close();
+    db.close();
   } catch (err) {
     console.error(err);
   }

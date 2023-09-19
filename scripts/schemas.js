@@ -1,11 +1,7 @@
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+const Database = require('better-sqlite3');
 
 (async () => {
-  const db = await open({
-    filename: 'monitor-node.db',
-    driver: sqlite3.Database
-  });
+  const db = new Database('monitor-node.db');
 
   await db.run(`CREATE TABLE IF NOT EXISTS wallets (
     address TEXT UNIQUE PRIMARY KEY,
@@ -105,8 +101,8 @@ const { open } = require('sqlite');
   //   AND createdTimestamp >= datetime('now', '-12 hours')
   //   ORDER BY sp.deployBlock DESC`);
 
-  await db.run('DROP VIEW IF EXISTS watched_pairs');
-  await db.run(`CREATE VIEW watched_pairs AS
+  db.run('DROP VIEW IF EXISTS watched_pairs');
+  db.run(`CREATE VIEW watched_pairs AS
     SELECT *
     FROM screener_pairs
     WHERE createdTimestamp >= datetime('now', '-24 hours')

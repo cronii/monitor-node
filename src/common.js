@@ -18,7 +18,7 @@ const {
 } = require('./utils/constants');
 const WATCHED_EVENTS = [SWAP, MINT, BURN];
 
-const { insertScreenerPairQuery, insertScreenerEventQuery } = require('./utils/queries');
+const { INSERT_SCREENER_PAIR_QUERY, INSERT_SCREENER_EVENT_QUERY } = require('./utils/queries');
 
 async function analyzeBlock({ client, db, blockNumber }) {
   const blockNumberString = blockNumber.toString();
@@ -63,8 +63,8 @@ async function analyzeTransactions({ client, db, txHashes }) {
 // @TODO: reuse TXS from analyzeTransactions
 
 async function analyzeEvents({ client, db, events, txs }) {
-  const getWatchedPairsQuery = 'SELECT pairAddress, pair, flipTokens, token0Symbol FROM watched_pairs';
-  const watchedPairs = await db.all(getWatchedPairsQuery);
+  const getWatchedPairsQuery = db.prepare('SELECT pairAddress, pair, flipTokens, token0Symbol FROM watched_pairs');
+  const watchedPairs = getWatchedPairsQuery.all();
   const watchedPairAddresses = watchedPairs.map(pair => pair.pairAddress.toLowerCase());
 
   for (const event of events) {
@@ -119,14 +119,28 @@ async function uniswapV2PairCreated({ client, db, event, txs }) {
   // }
 
   const pairName = `${token0Symbol}_${token1Symbol}_V2`;
-  await db.run(insertScreenerPairQuery, [pairName, ETH_CHAIN_ID, pairAddress, flipTokens, token0.address, token0Symbol, token0.decimals, token1.address, token1Symbol, token1.decimals, Number(blockNumber)]);
+  // await db.run(insertScreenerPairQuery, [pairName, ETH_CHAIN_ID, pairAddress, flipTokens, token0.address, token0Symbol, token0.decimals, token1.address, token1Symbol, token1.decimals, Number(blockNumber)]);
+  const insertScreenerPairQuery = db.prepare(INSERT_SCREENER_PAIR_QUERY);
+  insertScreenerPairQuery.run({
+    pair: pairName,
+    chainId: ETH_CHAIN_ID,
+    pairAddress,
+    flipTokens: flipTokens ? 1 : 0,
+    token0: token0.address,
+    token0Symbol,
+    token0Decimals: token0.decimals,
+    token1: token1.address,
+    token1Symbol,
+    token1Decimals: token1.decimals,
+    deployBlock: Number(blockNumber)
+  });
 
-  const insertPairCreatorWallet = 'INSERT OR IGNORE INTO wallets (address) VALUES (?)';
-  await db.run(insertPairCreatorWallet, [pairCreator.toLowerCase()]);
+  const insertPairCreatorWalletQuery = db.prepare('INSERT OR IGNORE INTO wallets (address) VALUES ($address)');
+  insertPairCreatorWalletQuery.run({ address: pairCreator.toLowerCase() });
 
-  const insertPairCreatorWalletTag = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
-  await db.run(insertPairCreatorWalletTag, [pairCreator.toLowerCase(), token0Symbol, TOKEN_TAG]);
-  await db.run(insertPairCreatorWalletTag, [pairCreator.toLowerCase(), `${token0Symbol} Pair Creator`, INSIDER_TAG]);
+  const insertPairCreatorWalletTagQuery = db.prepare('INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)');
+  insertPairCreatorWalletTagQuery.run(pairCreator.toLowerCase(), token0Symbol, TOKEN_TAG);
+  insertPairCreatorWalletTagQuery.run(pairCreator.toLowerCase(), `${token0Symbol} Pair Creator`, INSIDER_TAG);
 
   return { pairAddress, pair: pairName, flipTokens };
 }
@@ -154,27 +168,46 @@ async function watchedPairEvent({ db, pair, event, txs }) {
     }
 
     if (flipTokens) amounts = [amounts[2], amounts[3], amounts[0], amounts[1]];
-    await db.run(insertScreenerEventQuery, [Number(blockNumber), ETH_CHAIN_ID, pairAddress, transactionIndex, logIndex, transactionHash, eventName, sender.toLowerCase(), maker.toLowerCase(), ...amounts]);
+
+    const insertScreenerEventQuery = db.prepare(INSERT_SCREENER_EVENT_QUERY);
+    // await db.run(insertScreenerEventQuery, [Number(blockNumber), ETH_CHAIN_ID, pairAddress, transactionIndex, logIndex, transactionHash, eventName, sender.toLowerCase(), maker.toLowerCase(), ...amounts]);
+    insertScreenerEventQuery.run({
+      block: Number(blockNumber),
+      chainId: ETH_CHAIN_ID,
+      pairAddress,
+      txIndex: transactionIndex,
+      logIndex,
+      txHash: transactionHash,
+      eventName,
+      senderAddress: sender.toLowerCase(),
+      makerAddress: maker.toLowerCase(),
+      token0In: amounts[0],
+      token0Out: amounts[1],
+      token1In: amounts[2],
+      token1Out: amounts[3]
+    });
 
     // insert and tag unique wallets
-    const insertMakerWallet = 'INSERT OR IGNORE INTO wallets (address) VALUES (?)';
-    await db.run(insertMakerWallet, [maker.toLowerCase()]);
+    const insertMakerWalletQuery = db.prepare('INSERT OR IGNORE INTO wallets (address) VALUES (?)');
+    insertMakerWalletQuery.run(maker.toLowerCase());
 
-    const insertMakerWalletTag = 'INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)';
-    await db.run(insertMakerWalletTag, [maker.toLowerCase(), token0Symbol, TOKEN_TAG]);
+    const insertMakerWalletTagQuery = db.prepare('INSERT OR IGNORE INTO wallet_tags (address, tag, type) VALUES (?, ?, ?)');
+    insertMakerWalletTagQuery.run(maker.toLowerCase(), token0Symbol, TOKEN_TAG);
 
-    const updatePairUpdated = 'UPDATE screener_pairs SET lastUpdateBlock = ? WHERE pairAddress = ?';
-    await db.run(updatePairUpdated, [Number(blockNumber), pairAddress]);
+    const updatePairQuery = db.prepare('UPDATE screener_pairs SET lastUpdateBlock = ? WHERE pairAddress = ?');
+    updatePairQuery.run(Number(blockNumber), pairAddress);
   }
 }
 
 async function analyzeWatchedPairs({ client, db }) {
-  const getWatchedPairsQuery = `SELECT wp.*, COUNT(se.txId) AS eventCount
+  const getWatchedPairsQuery = db.prepare(`SELECT wp.*, COUNT(se.txId) AS eventCount
       FROM watched_pairs wp
       LEFT JOIN screener_events se ON wp.pairAddress = se.pairAddress AND wp.chainId = se.chainId
       GROUP BY wp.pairAddress
-      ORDER BY deployBlock DESC`;
-  const watchedPairs = await db.all(getWatchedPairsQuery);
+      ORDER BY deployBlock DESC`);
+  const watchedPairs = getWatchedPairsQuery.all(getWatchedPairsQuery);
+
+  console.log(`watchedPairs: ${watchedPairs.length}`);
 
   // get base token balances for each pair
   const detailedWatchedPairs = await Promise.all(watchedPairs.map(async watchedPair => {

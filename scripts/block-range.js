@@ -1,8 +1,7 @@
 const { createPublicClient, http } = require('viem');
 const { mainnet } = require('viem/chains');
 
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+const Database = require('better-sqlite3');
 
 const { analyzeBlock } = require('../src/common');
 const CONFIG = require('../config.json');
@@ -23,10 +22,7 @@ const BLOCK_TIME = 10000;
       transport
     });
 
-    const db = await open({
-      filename: 'monitor-node.db',
-      driver: sqlite3.Database
-    });
+    const db = new Database('monitor-node.db');
 
     for (let blockNumber = BLOCK_START; blockNumber <= BLOCK_END; blockNumber++) {
       await analyzeBlock({ client, db, blockNumber, outputToFile: false });
@@ -34,7 +30,7 @@ const BLOCK_TIME = 10000;
       if (SIMULATE) await new Promise(resolve => setTimeout(resolve, BLOCK_TIME));
     }
 
-    await db.close();
+    db.close();
   } catch (err) {
     console.error(err);
   }

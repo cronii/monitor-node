@@ -1,8 +1,6 @@
 const { createPublicClient, webSocket } = require('viem');
 const { mainnet } = require('viem/chains');
-
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+const Database = require('better-sqlite3');
 
 const { analyzeBlock, analyzeWatchedPairs } = require('./src/common');
 const CONFIG = require('./config.json');
@@ -24,15 +22,13 @@ async function parseBlockNumber(blockNumber) {
   // console.log(`https://etherscan.io/block/${blockNumber}`);
 
   // does not seem like db needs to reopened for each block
-  const db = await open({
-    filename: 'monitor-node.db',
-    driver: sqlite3.Database
-  });
+  const db = new Database('monitor-node.db');
+  db.pragma('journal_mode = WAL');
 
   await analyzeBlock({ client, db, blockNumber, outputToFile: false });
   const watchedPairs = await analyzeWatchedPairs({ client, db });
   await broadcastToClients('watchedPairs', watchedPairs);
-  await db.close();
+  db.close();
 };
 
 async function broadcastToClients(type, data) {
