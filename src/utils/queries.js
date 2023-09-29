@@ -140,6 +140,55 @@ const insertHistoricalEventQuery = (pairName) => {
     token1Out) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 }
 
+const INSERT_WATCHED_WALLET_QUERY = 'INSERT OR IGNORE INTO watched_wallets (address) VALUES (?)';
+const INSERT_WATCHED_WALLET_SWAP_QUERY = `INSERT OR IGNORE INTO watched_wallet_swaps (
+  maker,
+  txHash,
+  chainId,
+  block,
+  txIndex,
+  logIndex,
+  pairAddress,
+  tokenSold,
+  amountSold,
+  tokenBought,
+  amountBought,
+  timestamp
+  ) VALUES (
+  $maker,
+  $txHash,
+  $chainId,
+  $block,
+  $txIndex,
+  $logIndex,
+  $pairAddress,
+  $tokenSold,
+  $amountSold,
+  $tokenBought,
+  $amountBought,
+  $timestamp)`;
+const INSERT_WATCHED_WALLET_PAIR_QUERY = `INSERT OR IGNORE INTO watched_wallet_pairs (
+  pairName,
+  chainId,
+  pairAddress,
+  flipTokens,
+  token0,
+  token0Symbol,
+  token0Decimals,
+  token1,
+  token1Symbol,
+  token1Decimals) VALUES (
+  $pairName,
+  $chainId,
+  $pairAddress,
+  $flipTokens,
+  $token0,
+  $token0Symbol,
+  $token0Decimals,
+  $token1,
+  $token1Symbol,
+  $token1Decimals)`;
+
 module.exports = {
   insertScreenerPairQuery,
   INSERT_SCREENER_PAIR_QUERY,
@@ -149,5 +198,8 @@ module.exports = {
   insertHistoricalPairQuery,
   getHistoricalPairQuery,
   createHistoricalPairTableQuery,
-  insertHistoricalEventQuery
+  insertHistoricalEventQuery,
+  INSERT_WATCHED_WALLET_QUERY,
+  INSERT_WATCHED_WALLET_SWAP_QUERY,
+  INSERT_WATCHED_WALLET_PAIR_QUERY
 };

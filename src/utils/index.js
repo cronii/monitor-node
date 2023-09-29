@@ -95,21 +95,18 @@ async function toToken(client, address) {
       {
         ...erc20Contract,
         functionName: 'decimals'
-      },
-      {
-        ...erc20Contract,
-        functionName: 'totalSupply'
       }
     ]
   });
 
+  // @TODO currently there is an issue with reading certain symbols (ie. MKR 0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2)
+  // likely due to non-compliant ERC20 definitions
   if (results.some(result => result.status === 'failure')) throw new Error(`Failed ERC20 Read ${address}`, { details: address });
 
   return {
     address,
     symbol: results[0].result,
-    decimals: results[1].result,
-    totalSupply: results[2].result
+    decimals: results[1].result
   }
 }
 
@@ -130,6 +127,21 @@ function replacer(key, value) {
   return value;
 }
 
+function truncateDecimal(numberString, decimalPlaces = 4) {
+  // Parse the number string into a floating-point number
+  const number = parseFloat(numberString);
+
+  // Check if the parsed number is a valid finite number
+  if (!isFinite(number)) {
+    throw new Error('Input is not a valid number');
+  }
+
+  // Use toFixed to round and format the number to the specified decimal places
+  const truncatedNumber = number.toFixed(decimalPlaces);
+
+  return truncatedNumber;
+}
+
 module.exports = {
   isCommonToken,
   isWETH,
@@ -142,5 +154,6 @@ module.exports = {
   tagWallets,
   getContractCreationData,
   toToken,
-  honeypotIsRequest
+  honeypotIsRequest,
+  truncateDecimal
 }

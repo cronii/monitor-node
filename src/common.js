@@ -30,8 +30,6 @@ async function analyzeBlock({ client, db, blockNumber }) {
   try {
     const txs = await analyzeTransactions({ client, db, txHashes: block.transactions });
     await analyzeEvents({ client, db, events, txs });
-
-    // @TODO check liquidity of watched pairs?
   } catch (err) {
     console.log(err);
     await reportError({ blockNumber: blockNumberString })
@@ -43,6 +41,9 @@ async function analyzeBlock({ client, db, blockNumber }) {
 async function analyzeTransactions({ client, db, txHashes }) {
   const txPromises = txHashes.map(txHash => client.getTransaction({ hash: txHash }));
   const txs = await Promise.all(txPromises);
+
+  // @TODO record all contract deployers into database
+  // this however, may just be too noisy
 
   // for (const tx of txs) {
   //   if (tx.creates !== null) {
@@ -119,7 +120,6 @@ async function uniswapV2PairCreated({ client, db, event, txs }) {
   // }
 
   const pairName = `${token0Symbol}_${token1Symbol}_V2`;
-  // await db.run(insertScreenerPairQuery, [pairName, ETH_CHAIN_ID, pairAddress, flipTokens, token0.address, token0Symbol, token0.decimals, token1.address, token1Symbol, token1.decimals, Number(blockNumber)]);
   const insertScreenerPairQuery = db.prepare(INSERT_SCREENER_PAIR_QUERY);
   insertScreenerPairQuery.run({
     pair: pairName,
@@ -170,7 +170,6 @@ async function watchedPairEvent({ db, pair, event, txs }) {
     if (flipTokens) amounts = [amounts[2], amounts[3], amounts[0], amounts[1]];
 
     const insertScreenerEventQuery = db.prepare(INSERT_SCREENER_EVENT_QUERY);
-    // await db.run(insertScreenerEventQuery, [Number(blockNumber), ETH_CHAIN_ID, pairAddress, transactionIndex, logIndex, transactionHash, eventName, sender.toLowerCase(), maker.toLowerCase(), ...amounts]);
     insertScreenerEventQuery.run({
       block: Number(blockNumber),
       chainId: ETH_CHAIN_ID,
@@ -206,8 +205,6 @@ async function analyzeWatchedPairs({ client, db }) {
       GROUP BY wp.pairAddress
       ORDER BY deployBlock DESC`);
   const watchedPairs = getWatchedPairsQuery.all(getWatchedPairsQuery);
-
-  console.log(`watchedPairs: ${watchedPairs.length}`);
 
   // get base token balances for each pair
   const detailedWatchedPairs = await Promise.all(watchedPairs.map(async watchedPair => {

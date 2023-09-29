@@ -1,8 +1,11 @@
 config.json
+input/
 output/
 reports/
 monitor-node.db
 monitor-node.db-journal
+monitor-node.db-shm
+monitor-node.db-wal
 .DS_Store
 
 # Logs
