@@ -16,6 +16,8 @@ const TOPIC_MAPPINGS = {
 //   '0x9008d19f58aabd9ed0d60971565aa8510560ab41' // cowswap
 // ];
 
+// @TODO eventually need to track any transfers out of wallets
+
 async function analyzeBlock({ client, db, blockNumber }) {
   const blockNumberString = blockNumber.toString();
   console.time(blockNumberString);
