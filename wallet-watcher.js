@@ -6,14 +6,17 @@ const http = require('http');
 const WebSocket = require('ws');
 const cors = require('cors');
 
+const { analyzeBlock, getWatchedWalletActivity } = require('./src/wallet-watcher-common');
+const CONFIG = require('./config.json');
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const { analyzeBlock, getWatchedWalletActivity } = require('./src/wallet-watcher-common');
-const CONFIG = require('./config.json');
+const db = new Database('monitor-node.db');
+db.pragma('journal_mode = WAL');
 
-const transport = webSocket(CONFIG.wsLocal);
+const transport = webSocket(CONFIG.wsRemote);
 const client = createPublicClient({
   chain: mainnet,
   transport
@@ -24,13 +27,9 @@ client.watchBlockNumber({
 });
 
 async function parseBlockNumber(blockNumber) {
-  const db = new Database('monitor-node.db');
-  db.pragma('journal_mode = WAL');
-
   await analyzeBlock({ client, db, blockNumber });
   const { recentPairs, recentSwaps } = await getWatchedWalletActivity({ client, db });
   await broadcastToClients('watchedWalletScreener', { recentPairs, recentSwaps });
-  db.close();
 };
 
 async function broadcastToClients(type, data) {
@@ -47,8 +46,6 @@ app.use(express.json());
 app.get('/api/wallet/:address', async (req, res) => {
   try {
     const address = req.params.address;
-    const db = new Database('monitor-node.db');
-    db.pragma('journal_mode = WAL');
 
     const watchedWalletQuery = db.prepare(`
       SELECT * 
@@ -71,19 +68,17 @@ app.get('/api/wallet/:address', async (req, res) => {
 
 app.get('/api/wallets', async (req, res) => {
   try {
-    const db = new Database('monitor-node.db');
-    db.pragma('journal_mode = WAL');
-
     const watchedWalletsQuery = db.prepare(`
       SELECT
       ww.address,
+      ww.ensName,
       (
         SELECT MAX(wws.timestamp)
         FROM watched_wallet_swaps AS wws
         WHERE wws.maker = ww.address
-      ) AS last_seen
+      ) AS lastSeen
       FROM watched_wallets AS ww
-      ORDER BY last_seen DESC`);
+      ORDER BY lastSeen DESC`);
     const wallets = watchedWalletsQuery.all();
     res.json(wallets);
   } catch (err) {
@@ -97,9 +92,6 @@ app.get('/api/wallets', async (req, res) => {
  */
 app.get('/api/wallets-for-review', async (req, res) => {
   try {
-    const db = new Database('monitor-node.db');
-    db.pragma('journal_mode = WAL');
-
     const getWalletsForReviewQuery = db.prepare('SELECT * FROM wallets_for_review ORDER BY reviewed ASC, added DESC');
     const wallets = getWalletsForReviewQuery.all();
     res.json(wallets);
@@ -114,9 +106,6 @@ app.get('/api/wallets-for-review', async (req, res) => {
  */
 app.post('/api/wallets-for-review', async (req, res) => {
   try {
-    const db = new Database('monitor-node.db');
-    db.pragma('journal_mode = WAL');
-
     const { address, reviewed, added } = req.body;
 
     const updateWalletsForReviewQuery = db.prepare('UPDATE wallets_for_review SET reviewed = ?, added = ? WHERE address = ?');
@@ -135,39 +124,23 @@ app.post('/api/wallets-for-review', async (req, res) => {
   }
 });
 
-// app.post('/api/add-wallet', async (req, res) => {
-//   try {
-//     const db = new Database('monitor-node.db');
-//     db.pragma('journal_mode = WAL');
-
-//     const { address } = req.body;
-//     const insertWallet = db.prepare('INSERT OR IGNORE INTO watched_wallets (address, ensName) VALUES (?, ?)');
-//     const ensName = null;
-//     insertWallet.run(address.toLowerCase(), ensName);
-
-//     res.json({ success: true });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ error: 'Failed to fetch data from the database' });
-//   }
-// });
-
 wss.on('connection', (ws) => {
   console.log('Client connected');
   clients.push(ws);
 
-  ws.on('message', (message) => {
+  ws.on('message', async (message) => {
     const command = JSON.parse(message);
+
+    if (command.type === 'getWatchedWalletActivity') {
+      const { recentPairs, recentSwaps } = await getWatchedWalletActivity({ client, db });
+      ws.send(JSON.stringify({ type: 'watchedWalletScreener', recentPairs, recentSwaps }));
+    }
+
     if (command.type === 'addWallet') {
       const { address } = command;
-      const db = new Database('monitor-node.db');
-      db.pragma('journal_mode = WAL');
-
       const insertWallet = db.prepare('INSERT OR IGNORE INTO watched_wallets (address, ensName) VALUES (?, ?)');
       const ensName = null;
       insertWallet.run(address.toLowerCase(), ensName);
-
-      db.close();
     }
   });
 
@@ -177,6 +150,10 @@ wss.on('connection', (ws) => {
   });
 });
 
-server.listen(PORT, '192.168.0.179', () => {
+// server.listen(PORT, '192.168.0.179', () => {
+//   console.log(`Listening on port ${PORT}`);
+// });
+
+server.listen(PORT, () => {
   console.log(`Listening on port ${PORT}`);
 });

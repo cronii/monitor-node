@@ -134,7 +134,7 @@ async function getWatchedWalletActivity({ db }) {
       LIMIT 250
     ) AS subquery
     GROUP BY pairAddress
-    ORDER BY COUNT(*) DESC`)
+    ORDER BY uniqueCount DESC, swapCount DESC`)
   const recentPairs = recentPairsQuery.all();
 
   return { recentPairs, recentSwaps };

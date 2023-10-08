@@ -12,7 +12,7 @@ const BLOCK_END = 18237148n;
 
 (async () => {
   try {
-    const transport = http(CONFIG.rpcLocal);
+    const transport = http(CONFIG.rpcRemote);
     const client = createPublicClient({
       chain: mainnet,
       transport
